@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <style>
+        #signature-pad {
+            border: 1px solid #000;
+            background-color: #fff;
+            width: 300px;
+            height: 150px;
+            margin-top: 20px;
+        }
+        #controls {
+            margin-top: 10px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <p>Here is an input form:</p>
+    <form>
+        <!-- Form Fields -->
+        <label for="name">Name:</label><br>
+        <input placeholder="name" type="text" id="name" name="name"><br><br>
+
+        <label for="lastname">Last name:</label><br>
+        <input type="text" id="lastname" name="lastname" placeholder="lastname"><br><br>
+
+        <label for="BirthDate">Birth Date:</label><br>
+        <input type="date" id="BirthDate" name="BirthDate"><br><br>
+
+        <label for="MeetingTime">Meeting Time:</label><br>
+        <input type="datetime-local" id="MeetingTime" name="MeetingTime"><br><br>
+
+        <label for="ProfilePic">Profile Pic:</label><br>
+        <input type="file" id="ProfilePic" name="ProfilePic"><br><br>
+
+        <label for="Complaint">Complaint:</label><br>
+        <textarea id="Complaint" name="Complaint"></textarea><br><br>
+
+        <label for="FavoriteColor">Favorite Color:</label><br>
+        <input type="color" id="FavoriteColor" name="FavoriteColor"><br><br>
+
+        <label for="Email">Email:</label><br>
+        <input type="email" id="Email" name="Email"><br><br>
+
+        <label for="Age">Age:</label><br>
+        <input type="number" step="0.5" id="Age" name="Age"><br><br>
+
+        <label for="Password">Password:</label><br>
+        <input type="password" id="Password" name="Password"><br><br>
+
+        <label for="terms">I agree to the terms of use:</label><br>
+        <input type="checkbox" id="terms" name="terms"><br><br>
+
+        <label for="emailssend">I agree to accept emails:</label><br>
+        <input type="checkbox" id="emailssend" name="emailssend"><br><br>
+
+        <label for="Gender">Gender:</label><br>
+        <label for="Male">Male:</label>
+        <input type="radio" id="Male" name="genders">
+        <label for="Female">Female:</label>
+        <input type="radio" id="Female" name="genders"><br><br>
+
+        <label for="phone">Your phone:</label><br>
+        <input type="tel" id="phone" name="phone"><br><br>
+
+        <label for="City">City:</label><br>
+        <select name="City" id="City">
+            <option disabled selected value="Please select city...">Please select city...</option>
+            <option value="Tel Aviv">Tel Aviv</option>
+            <option value="Petach Tikwa">Petach Tikwa</option>
+            <option value="Jerusalem">Jerusalem</option>
+            <option value="Ashkelon">Ashkelon</option>
+        </select><br><br>
+
+        <label for="Hobbies">Hobbies:</label><br>
+        <select multiple name="Hobbies" id="Hobbies">
+            <option value="Cooking">Cooking</option>
+            <option value="Knitting">Knitting</option>
+            <option value="Sport">Sport</option>
+            <option value="Ashkelon">Ashkelon</option>
+        </select><br><br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        <!-- Signature Pad at the End -->
+        <!-- <div id="signature-container">
+            <h2>Signature Field</h2>
+            <div id="signature-pad">
+                <canvas></canvas>
+            </div>
+
+            <div id="controls">
+                <button id="clear" class="btn btn-danger">Clear Signature</button>
+                <button id="save" class="btn btn-primary">Save as Image</button>
+            </div>
+        </div>
+
+        <textarea id="signature" style="display:none;"></textarea>
+        <div id="output" class="mt-3"></div>
+    </form>
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
+    <script>
+        var canvas = document.querySelector("canvas");
+        var signaturePad = new SignaturePad(canvas);
+        
+        // Resize the canvas to fit the container
+        function resizeCanvas() {
+            var ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+        
+        // Clear the signature
+        $('#clear').on('click', function() {
+            signaturePad.clear();
+        });
+
+        // Save the signature as an image
+        $('#save').on('click', function() {
+            if (!signaturePad.isEmpty()) {
+                // Convert the canvas to a data URL (PNG format)
+                var dataURL = signaturePad.toDataURL("image/png");
+                
+                // Create a temporary link element
+                var downloadLink = document.createElement('a');
+                downloadLink.href = dataURL;
+                downloadLink.download = 'signature.png';  // Filename for the download
+                
+                // Trigger the download by simulating a click event
+                downloadLink.click();
+            } else {
+                alert('Please sign before saving.');
+            }
+        });
+    </script> -->
+</body>
+</html>

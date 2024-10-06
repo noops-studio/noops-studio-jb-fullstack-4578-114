@@ -1,0 +1,31 @@
+.m-signature-pad--body {
+  /*position: absolute;*/
+  border: 1px dotted #b3b3b3;
+  background-color: white;
+  width:100%;
+  height: 250px;
+  margin-bottom: 20px;
+}
+
+canvas {
+/*    position: absolute;*/
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    /*border-radius: 4px;*/
+    /*box-shadow: 0 0 5px rgba(0, 0, 0, 0.02) inset;*/
+  }
+
+/* 
+ @media screen and (max-width: 1200px) {
+  .m-signature-pad--body {
+    width: 50% !important;
+  }
+}
+
+ @media screen and (max-width: 700px) {
+  .m-signature-pad--body {
+    width: 100% !important;
+  } */
+}
