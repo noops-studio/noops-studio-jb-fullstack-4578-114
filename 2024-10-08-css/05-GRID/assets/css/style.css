@@ -1,0 +1,14 @@
+body > div{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+body > div > div{
+font-size: x-large;
+text-align: center;
+padding: 10px;
+border: 1 solid gray;
+background-color: pink;
+}
+body > div > div:nth-child(){
+  background-color: lightCyan;
+}

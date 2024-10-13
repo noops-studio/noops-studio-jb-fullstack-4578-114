@@ -1,0 +1,26 @@
+body {
+    text-align: center; 
+}
+
+p {
+    color: green;
+    background-color: yellow;    
+}
+
+h1, h2 {
+    color: purple;
+    background-color: cyan;    
+    margin: 0; 
+}
+
+form {
+    display: inline-block; 
+    border: 2px solid black; 
+    padding: 20px; 
+    background-color: white; 
+    margin-top: 20px; 
+}
+
+input[type="search"] {
+    background-color: yellow; 
+}

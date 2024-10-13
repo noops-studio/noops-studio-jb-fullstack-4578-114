@@ -1,0 +1,26 @@
+li > h2 {
+    color: blue;
+}
+
+h2 {
+    color: red;
+}
+
+#myDiv p {
+    font-style: normal;
+}
+
+div > div > div > ul > li > h2{
+    font-style: italic;
+}
+
+.myClass h2 {
+    font-style: normal;
+
+
+} 
+
+div > div > div > ul > li > h2{
+    font-style: oblique;
+}
+

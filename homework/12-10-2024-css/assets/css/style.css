@@ -1,0 +1,48 @@
+body {
+    text-align: center;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    height: 100vh;
+}
+
+.container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    max-width: 60%;
+    box-sizing: border-box; 
+}
+
+.container > p {
+    flex: 1 1 200px; 
+    height: 150px; 
+    padding: 10px;
+    border: 1px solid black;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    word-wrap: break-word; 
+    white-space: normal; 
+}
+
+.container > p:nth-child(1) {
+    color: red;
+}
+.container > p:nth-child(2) {
+    color: yellow;
+}
+.container > p:nth-child(3) {
+    color: greenyellow;
+}
+
+.container p a {
+    color: inherit; 
+    text-decoration: underline; 
+    white-space: nowrap; 
+}

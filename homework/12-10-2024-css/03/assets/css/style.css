@@ -1,0 +1,29 @@
+@font-face {
+    font-family: lol;
+    src: url(../fonts/Aubriel-Regular.otf);
+}
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.h1 {
+    display: inline-flex; /* Keeps the border close to the text */
+    border: 1px solid black; /* Adds border around the text */
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-family: lol;
+    padding: 20px 30px; /* Add padding to control space inside border */
+    margin: 0; /* Remove any extra spacing around the border */
+border-radius: 50px;
+background: linear-gradient(90deg, rgba(103,0,173,1) 0%, rgba(255,0,0,1) 50%, rgba(252,250,69,1) 100%);
+animation: noop 5s infinite;
+
+}
+@keyframes noop{
+    100%{transform: rotate(360deg);}
+}

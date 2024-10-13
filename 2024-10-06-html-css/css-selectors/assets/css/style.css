@@ -1,0 +1,70 @@
+
+body {
+ border: 1px solid red;
+}
+
+h1{
+    color: green;
+    background-color: yellow;
+}
+
+p {
+    color: red;
+}
+
+.cool-design{
+    color:blue;
+    background-color: red;
+}
+.cool-design-big{
+    font-size: xx-large;
+    font-weight: bold;
+    color: green;
+}
+
+.cool-design-small{
+    font-size: xx-small;
+    font-weight: lighter;
+    color: purple;
+}
+#last-paragraph{
+font-size: xx-small;
+text-decoration: underline;
+font-style: italic;}
+
+input[placeholder]{
+
+    background-color: yellow;
+    border: 3px dashed
+}
+a{
+    color: yellow;
+}
+
+a:hover{
+    color: green;
+font-size: xx-large;
+}
+
+
+p::first-letter{
+    font-size: xx-large;
+    color: cyan;
+}
+p.cool-design {
+    text-decoration: underline;
+}
+
+body ,html{
+    padding: 0;
+    margin: 0;
+}
+
+
+a p {
+    color: black;
+}
+
+p > a {
+    broder:3px dashed gray;
+}

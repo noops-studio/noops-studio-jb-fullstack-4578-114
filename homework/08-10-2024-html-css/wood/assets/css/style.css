@@ -1,0 +1,14 @@
+html, body{
+    margin: 0;
+    padding: 0;
+direction: rtl; 
+}
+.header-text{
+    text-align: center;
+}
+.welcome-text{
+    text-align: center;
+}
+.login-table{
+    text-align: right; direction: rtl;
+}

@@ -1,0 +1,7 @@
+@font-face {
+    font-family: GAN;
+    src: url("assets/fonts/GAN.ttf");
+}
+h1{
+    font-family: GAN;
+}
