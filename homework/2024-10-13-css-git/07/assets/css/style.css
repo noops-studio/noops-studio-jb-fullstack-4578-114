@@ -1,0 +1,23 @@
+html body{
+margin: 0;
+padding: 0;
+}
+
+.row > div {
+    border: 1px solid black;
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+#A {
+    background-color: red;
+}
+#B {
+    background-color: blue;
+}
+#C {
+    background-color: green;
+}
+#D {
+    background-color: yellow;
+}

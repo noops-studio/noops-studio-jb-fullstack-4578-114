@@ -1,0 +1,7 @@
+html , body , .container ,.container > * {
+    border: 1px solid black;
+    text-align: center;
+}
+img{
+    border-radius: 360px;
+}

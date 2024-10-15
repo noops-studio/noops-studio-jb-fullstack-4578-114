@@ -1,0 +1,10 @@
+html , body , .container,.container > *{
+
+    border: 1px solid black;
+}
+img{
+    width: 150px;
+    height: 150px;
+    border-radius: 100%;
+    margin-top: 100px;
+}
