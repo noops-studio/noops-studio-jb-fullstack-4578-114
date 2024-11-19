@@ -1,11 +1,15 @@
+const emp={
+privetname: 'John',
+lastname: 'Doe',
+salary: 1000
+};
 
 
-let mina = +prompt("enter first number");
-let maxa =  +prompt("enter first number");
-
-
-for(i = 0;i <= 100;i++){
-let randomInta = Math.floor(Math.random() * (Math.floor(maxa) - Math.ceil(mina)) + Math.ceil(mina));
-document.write(`${randomInta} <br> `);
-
+for(const proparty in emp){
+    document.write(`${proparty} : ${emp[proparty]} <br>`);
 }
+
+emp.address='USA';
+delete emp.salary;
+
+document.write(emp.salary);

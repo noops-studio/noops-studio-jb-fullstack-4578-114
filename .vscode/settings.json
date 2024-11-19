@@ -1,0 +1,46 @@
+// {
+//     "folderTemplates.templates": [
+//       {
+//         "name": "HTML Project",
+//         "omitParentDirectory": true,
+//         "structure": [
+//           {
+//             "fileName": "index.html",
+//             "template": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Document</title>\n    <link rel=\"stylesheet\" href=\"assets/css/style.css\">\n    <script src=\"assets/js/app.js\"></script>\n</head>\n<body>\n    \n</body>\n</html>"
+//           },
+//           {
+//             "fileName": "assets/css/style.css",
+//             "template": ""
+//           },
+//           {
+//             "fileName": "assets/js/app.js",
+//             "template": ""
+//           }
+//         ]
+//       }
+//     ]
+//   }
+  {
+    "name": "My Custom Template",
+    "omitParentDirectory": true,
+    "structure": [
+      {
+        "fileName": "index.html",
+        "template": "Typescript Functional Component"
+      },
+      {
+        "fileName": "tests/<FTName>.test.js",
+        "template": "Typescript Functional Component"
+
+      },
+      {
+        "fileName": "index.js",
+        "template": "IndexFile"
+      },
+
+      {
+        "fileName": "app.js",
+        "template": "EmptyDirectory"
+      }
+    ]
+  }
