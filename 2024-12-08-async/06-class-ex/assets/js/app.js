@@ -1,7 +1,7 @@
 "use strict";
 
 document.addEventListener('DOMContentLoaded', () => {
-    function getPower(num, successCallback, errorCallback) {
+    const  getPower = (num, successCallback, errorCallback) => {
         setTimeout(() => {
             if (num % 3 === 0) return errorCallback('number cant be divisible by 3');
             successCallback(num ** 2);
