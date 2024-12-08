@@ -11,13 +11,19 @@
             }, 3000)
         })
     }
-    let result
-    let result2
-    console.log('A')
-    result = await getNumberOfCandles(1)
-    console.log('B')
-    result2 = await getNumberOfCandles(2)
-    console.log('C')
-    console.log(result)
-    console.log(result2)
+
+    try {
+        let result
+        let result2
+        console.log('A')
+        result = await getNumberOfCandles(1)
+        console.log('B')
+        result2 = await getNumberOfCandles(2)
+        console.log('C')
+        console.log(result)
+        console.log(result2)
+    } catch (error) {
+        console.error(error)
+        
+    }
 })()
