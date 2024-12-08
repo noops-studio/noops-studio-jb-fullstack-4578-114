@@ -5,7 +5,7 @@
     const pickColor = () => {
         const colors = ['red', 'green', 'blue', 'yellow', 'cyan']
         const randomColor = colors[Math.floor(Math.random() * colors.length * 2)]
-        if(!randomColor) throw new Error ('undefined color')
+        if (!randomColor) throw new Error('undefined color')
         document.body.style.backgroundColor = randomColor
     }
 
@@ -24,14 +24,19 @@
         setTimeout(() => {
             const colors = ['red', 'green', 'blue', 'yellow', 'cyan']
             const randomColor = colors[Math.floor(Math.random() * colors.length * 2)]
-            if(!randomColor) throw new Error ('undefined color')
+            if (!randomColor) throw new Error('undefined color')
             callback(randomColor)
         }, 2000)
     }
 
     document.getElementById('switchColorAsync').addEventListener('click', () => {
         try {
-            pickColorAsync(color => document.body.style.backgroundColor = randomColor)
+            pickColorAsync(color => {
+                document.body.style.backgroundColor = randomColor
+            }, error => {
+                console.log(error)
+            }
+            )
         } catch (e) {
             console.log(e.message)
         }
