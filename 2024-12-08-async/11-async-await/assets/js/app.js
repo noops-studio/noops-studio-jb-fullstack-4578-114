@@ -13,6 +13,7 @@
     }
 
     try {
+
         let result
         let result2
         console.log('A')
@@ -22,6 +23,12 @@
         console.log('C')
         console.log(result)
         console.log(result2)
+
+        for(const dayNumber of [1,2,3,4,5,6,7,8]) {
+                const result = await getNumberOfCandles(dayNumber)
+                console.log(result)
+            }
+
     } catch (error) {
         console.error(error)
         
