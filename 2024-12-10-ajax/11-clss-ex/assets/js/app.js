@@ -1,6 +1,7 @@
 "use strict";
 
 (() => {
+    const sqlQuery = (query, params) => alasql(query, params)
     // Fetch data from the given URL and return the parsed JSON
     const fetchData = async (url) => {
         const response = await fetch(url);
@@ -58,32 +59,30 @@
     };
 
     // Generate and append user-specific task completion table
-    const generateUserStatsTable = async (url) => {
-        const data = await fetchData(url);
+const generateUserStatsTable = async (url) => {
+    const data = await fetchData(url);
 
-        const userStats = data.reduce((acc, { userId, completed }) => {
-            if (!acc[userId]) {
-                acc[userId] = { completed: 0, notCompleted: 0 };
-            }
-            if (completed) {
-                acc[userId].completed += 1;
-            } else {
-                acc[userId].notCompleted += 1;
-            }
-            return acc;
-        }, {});
+    const userStats = sqlQuery(`
+        SELECT 
+            userId,
+            SUM(CASE WHEN completed THEN 1 ELSE 0 END) AS completed,
+            SUM(CASE WHEN NOT completed THEN 1 ELSE 0 END) AS notCompleted FROM ?
+        GROUP BY userId
+    `, [data]);
 
-        const userStatsHtml = Object.entries(userStats).map(([userId, stats]) => `
-            <tr>
-                <td>${userId}</td>
-                <td>${stats.completed}</td>
-                <td>${stats.notCompleted}</td>
-            </tr>
-        `).join('');
+    // Generate HTML for the table rows
+    const userStatsHtml = userStats.map(({ userId, completed, notCompleted }) => `
+        <tr>
+            <td>${userId}</td>
+            <td>${completed}</td>
+            <td>${notCompleted}</td>
+        </tr>
+    `).join('');
 
-        const tableBody = document.querySelector('#user-stats tbody');
-        tableBody.innerHTML = userStatsHtml;
-    };
+    // Populate the user stats table body
+    const tableBody = document.querySelector('#user-stats tbody');
+    tableBody.innerHTML = userStatsHtml;
+};
 
     // Handle button click to render data
     document.getElementById('imager').addEventListener('click', async () => {
