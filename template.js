@@ -7,7 +7,7 @@ function generateTable(headerMappings, data) {
     // Create and append the heading
     const heading = document.createElement('h2');
     heading.className = 'mb-4';
-    heading.textContent = 'טבלה';
+    heading.textContent = 'chart';
     container.appendChild(heading);
 
     // Create the table element
