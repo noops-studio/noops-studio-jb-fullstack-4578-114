@@ -1,5 +1,5 @@
 // Function to generate the HTML table
-function generateTable(headerMappings, data) {
+const generateTable = (headerMappings, data) => {
     // Create the container div
     const container = document.createElement('div');
     container.className = 'container mt-5';
