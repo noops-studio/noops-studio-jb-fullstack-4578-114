@@ -1,92 +1,65 @@
-// (() => {
-//     const getData = (url) => {
-//         return fetch(url).then(response => response.json())
-//     }
+"use strict";
 
-//     console.log(getData('https://jsonplaceholder.typicode.com/users'))
-
-
-//     const renderChart = newHTML => document.getElementById('chartPlaceHolder').innerHTML = newHTML
- 
-    
-
-   
-
-//     const generateUsersTable = (arr) => {
-//         const data = arr
-//         console.log(typeof arr)
-//         const headers = {
-//             'name': 'שם',
-//             'username': 'שם משתמש',
-//             'email': 'אימייל',
-//             'phone': 'טלפון',
-//             'address.city': 'עיר',
-//             'address.street': 'רחוב',
-//             'address.zipcode': 'מיקוד',
-//             'company.name': 'שם החברה'
-//         };
-//         return generateTable(headers, data)
-//     }
-
-
-
-
-//     document.addEventListener('DOMContentLoaded', async () => {
-//         console.log('DOM Loaded');
-
-//         document.getElementById('formi').addEventListener('submit', (event) => {
-//             event.preventDefault(); // Prevent form submission
-
-//             console.log(document.getElementById('id'))
-//             // now we will fethc the valeu of the input with id id 
-//             const id = document.getElementById('id').value;
-//             console.log(id)
-//             getData(`https://jsonplaceholder.typicode.com/users/${id}`).then(data => {
-//                 console.log(data)
-//                 renderChart(generateUsersTable([data]))
-//             });
-
-//         });
-//     });
-
-
-
-
-// })()
 (() => {
-    const getData = (url) => {
-        return fetch(url).then(response => response.json());
-    };
-
-    const renderData = (data) => {
-        const container = document.getElementById('dataPlaceHolder');
-        container.innerHTML = `
-            <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                <h2 style="text-align: center; color: #333;">User Information</h2>
-                <div><strong>שם:</strong> ${data.name}</div>
-                <div><strong>שם משתמש:</strong> ${data.username}</div>
-                <div><strong>אימייל:</strong> ${data.email}</div>
-                <div><strong>טלפון:</strong> ${data.phone}</div>
-                <div><strong>עיר:</strong> ${data.address.city}</div>
-                <div><strong>רחוב:</strong> ${data.address.street}</div>
-                <div><strong>מיקוד:</strong> ${data.address.zipcode}</div>
-                <div><strong>שם החברה:</strong> ${data.company.name}</div>
-            </div>
-        `;
-    };
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        console.log('DOM Loaded');
-
-        document.getElementById('formi').addEventListener('submit', (event) => {
-            event.preventDefault(); // Prevent form submission
-
-            const id = document.getElementById('id').value;
-            console.log(id);
-            getData(`https://jsonplaceholder.typicode.com/users/${id}`).then(data => {
-                console.log(data);
-                renderData(data);
+     // Function to fetch the list of users
+function loadUsers() {
+    fetch('https://jsonplaceholder.typicode.com/users')
+        .then(response => response.json())
+        .then(users => {
+            const selectElement = document.getElementById('userSelect');
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.name;
+                selectElement.appendChild(option);
             });
-        });
-    });
+        })
+        .catch(error => console.error('Error fetching users:', error));
+}
+
+// Function to load user details
+// Function to load user details with an extended loading time
+function loadUserDetails(userId) {
+    const userDetailsElement = document.getElementById('userDetails');
+    const loadingMessage = document.getElementById('loadingMessage');
+    userDetailsElement.style.display = 'none';  // Hide user details initially
+    loadingMessage.style.display = 'block';  // Show loading message
+
+    // Set a timeout to extend the loading time (e.g., 3 seconds)
+    setTimeout(() => {
+        fetch(`https://jsonplaceholder.typicode.com/users/${userId}`)
+            .then(response => response.json())
+            .then(user => {
+                loadingMessage.style.display = 'none';  // Hide loading message after delay
+                userDetailsElement.style.display = 'block';  // Show user details
+
+                // Populate the user details
+                document.getElementById('userName').textContent = user.name;
+                document.getElementById('userUsername').textContent = user.username;
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userPhone').textContent = user.phone;
+                document.getElementById('userCity').textContent = user.address.city;
+                document.getElementById('userStreet').textContent = user.address.street;
+                document.getElementById('userZipcode').textContent = user.address.zipcode;
+                document.getElementById('userCompany').textContent = user.company.name;
+            })
+            .catch(error => {
+                loadingMessage.style.display = 'none';
+                console.error('Error fetching user details:', error);
+            });
+    }, 3000);  // Delay for 3 seconds before making the request (change this value to adjust the delay)
+}
+// Event listener for selecting a user
+document.getElementById('userSelect').addEventListener('change', function () {
+    const userId = this.value;
+    if (userId) {
+        loadUserDetails(userId);
+    } else {
+        document.getElementById('userDetails').style.display = 'none';  // Hide details if no user is selected
+    }
+});
+
+// Load the list of users on page load
+loadUsers();
+
 })();
