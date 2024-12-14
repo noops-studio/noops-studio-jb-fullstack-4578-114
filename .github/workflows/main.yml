@@ -1,0 +1,25 @@
+name: Deploy to S3
+
+on:
+  push:
+    branches:
+      - main  # This triggers the workflow for commits to the main branch (adjust if needed)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: il-central-1
+
+    - name: Upload template.js to S3
+      run: |
+        aws s3 cp ./template.js s3://modular365il.s3.il-central-1.amazonaws.com/beery/template.js --acl public-read
