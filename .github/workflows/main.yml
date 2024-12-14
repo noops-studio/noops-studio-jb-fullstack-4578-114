@@ -22,4 +22,4 @@ jobs:
 
     - name: Upload template.js to S3
       run: |
-        aws s3 cp ./template.js s3://modular365il.s3.il-central-1.amazonaws.com/beery/template.js --acl public-read
+        aws s3 cp ./template.js s3://modular365il/beery/template.js --acl public-read
