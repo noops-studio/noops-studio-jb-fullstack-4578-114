@@ -27,6 +27,7 @@
     }
     const renderChart = newHTML => document.getElementById('chartplaceholder').innerHTML = newHTML
     const renderStatsChart = newHTML => document.getElementById('chartyMini').innerHTML = newHTML
+    const renderEmailExtChart = newHTML => document.getElementById('chartplaceholderext').innerHTML = newHTML
 
     const calculateStats = (dataArr) => {
         const usernameCount = dataArr.length;
@@ -68,7 +69,28 @@
             'address.zipcode': 'מיקוד',
             'company.name': 'שם החברה'
         };
-   return generateTable(headers, data)
+        return generateTable(headers, data)
+    }
+
+    const generateMostUsedEmailExtentionTable = (arr) => {
+        const data = arr
+        console.log(typeof arr)
+        const headers = {
+            'extention': 'email extention',
+            'count': 'used count'
+        };
+
+        const extention = data.map(user => user.email.split('.').pop())
+        const extentionCount = extention.reduce((acc, ext) => {
+            acc[ext] = (acc[ext] || 0) + 1
+            return acc
+        }, {})
+        console.log(extentionCount)
+        
+        const extentionArr = Object.entries(extentionCount).map(([extention, count]) => ({ extention, count }))
+        console.log(extentionArr)
+
+        return generateTable(headers, extentionArr)
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -79,6 +101,7 @@
 
         const stats = await calculateStats(usersData)
         renderStatsChart(generateStatsHtml([stats]))
-
+        const emailExt = await generateMostUsedEmailExtentionTable(usersData)
+        renderEmailExtChart(emailExt)
     })
 })()
