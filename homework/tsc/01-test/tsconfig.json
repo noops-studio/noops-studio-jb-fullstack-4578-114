@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "moduleResolution": "node",
+      "outDir": "./assets/js",
+      "rootDir": "./src",
+      "removeComments": true,
+      "sourceMap": false
+    },
+    "watchOptions": {
+      "watchFile": "dynamicprioritypolling",   // Poll files dynamically
+      "watchDirectory": "dynamicprioritypolling", // Poll directories dynamically
+      "fallbackPolling": "dynamicPriority",   // Fallback polling strategy
+      "synchronousWatchDirectory": true,      // Ensure immediate watch updates
+      "excludeDirectories": ["**/node_modules"],
+      "excludeFiles": ["**/*.min.js"]
+    }
+  }
