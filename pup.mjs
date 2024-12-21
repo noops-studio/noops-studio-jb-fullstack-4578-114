@@ -78,3 +78,4 @@ import fs from 'fs';
 
     await browser.close();
 })();
+ 
