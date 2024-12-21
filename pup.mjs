@@ -57,7 +57,7 @@ import fs from 'fs';
         if (!element) return { selectorPath: '', computedStyles: '' };
 
         // Use the selector provided
-        const selectorPath = targetSelector;
+        const selectorPath = targetSelector; 
 
         // Get computed styles
         const computedStyles = window.getComputedStyle(element);
