@@ -1,20 +1,23 @@
 {
     "compilerOptions": {
-        "target": "es5",
-        "module": "ES6",
-        "outDir": "./assets/js",
-        "rootDir": "./src",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+      "target": "ES2022", 
+      "module": "ES2022",
+      "moduleResolution": "node",
+      "strict": true,
+      "outDir": "./assets/js",
+      "rootDir": "./src",
+      "removeComments": true,
+      "sourceMap": false,
+      "allowUmdGlobalAccess": true
+
+      
     },
     "watchOptions": {
-        "watchFile": "dynamicprioritypolling",   // Poll files dynamically
-        "watchDirectory": "dynamicprioritypolling", // Poll directories dynamically
-        "fallbackPolling": "dynamicPriority",   // Fallback polling strategy
-        "synchronousWatchDirectory": true,      // Ensure immediate watch updates
-        "excludeDirectories": ["**/node_modules"],
-        "excludeFiles": ["**/*.min.js"]
-      }
-}
+      "watchFile": "dynamicprioritypolling",   // Poll files dynamically
+      "watchDirectory": "dynamicprioritypolling", // Poll directories dynamically
+      "fallbackPolling": "dynamicPriority",   // Fallback polling strategy
+      "synchronousWatchDirectory": true,      // Ensure immediate watch updates
+      "excludeDirectories": ["**/node_modules"],
+      "excludeFiles": ["**/*.min.js"]
+    }
+  }

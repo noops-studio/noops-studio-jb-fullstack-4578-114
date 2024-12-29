@@ -1,11 +1,9 @@
 import  Car  from './car.js';
 // const car = new Car('Opal', 'Corsa', 2012, 13000);
-const micra = new Car()
-micra.make = 'Nissan';
-micra.model = 'Micra';
-micra.year = 2010;
-micra.diesel = true;
-micra.price = 10000;
 
-// console.log(micra);
+const micra = new Car('Nissan', 'Micra', true, 2010, 10000);
+const maxima = new Car('Nissan', 'Maxima', false, 2015, 20000);
+const modelX = new Car('Tesla', 'Model X', false, 2018, 80000);
+console.log(modelX.massage());
+console.log(micra);
 // console.log(car);
