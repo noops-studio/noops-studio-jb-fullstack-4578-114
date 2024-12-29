@@ -1,24 +1,10 @@
-let x: number = 1;
-let y = 2;
+import { showSale } from "./shop";
 
-// x = '1'
-let z: string = "hello";
-let t: string = "world";
-console.log(x + y);
-
-console.log(z + t);
-
-// bad 2
-function sum(a: number, b: number): number {
-  return a + b;
+function sayHi() {
+  console.log('Hi!');
+  showSale();
 }
-console.log(sum(1, 2));
-
-// bad 3
-
-function multiply(a: number, b: number): number {
-  const result = a * b;
-  return result;
+const sayHiButton = document.getElementById('sayHiButton');
+if (sayHiButton) {
+  sayHiButton.addEventListener('click', sayHi);
 }
-
-console.log(multiply(2, 3));
