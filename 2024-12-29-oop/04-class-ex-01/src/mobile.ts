@@ -1,31 +1,42 @@
-export default class Mobile {
-    private type: string;
-    private screenSize: number;
-    private price: number;
-    private numberOfCamera: number;
-    private fourDigitPin: number = Math.floor(Math.random() * 9000) + 1000;
-
-    turnOff() {
-        console.log(`${this.type} is turning off`)
+// mobile.ts
+export class Mobile {
+    static totalMobilesCreated: number = 0; // Static member to track the number of created devices
+  
+    // Constructor with shortened syntax
+    constructor(
+      public type: string,
+      public screenSize: number,
+      public price: number,
+      public numberOfCameras: number,
+      private pinCode: string
+    ) {
+      Mobile.totalMobilesCreated++;
     }
-
-    turnOn(): void {
-        console.log(`${this.type} is turning on`);
-    }
-
+  
+    // Methods
     takePicture(): void {
-        console.log(`${this.type} is taking a picture`);
+      console.log(`${this.type}: Taking a picture using one of its ${this.numberOfCameras} cameras.`);
     }
-
-    getPincode(): number { 
-        console.log(this.fourDigitPin);
-        return this.fourDigitPin;
+  
+    turnOn(): void {
+      console.log(`${this.type}: Turning on.`);
     }
-
-    constructor(type: string, screenSize: number, price: number, numberOfCamera: number) {
-        this.type = type;
-        this.screenSize = screenSize;
-        this.price = price;
-        this.numberOfCamera = numberOfCamera;
+  
+    turnOff(): void {
+      console.log(`${this.type}: Turning off.`);
     }
-}
+  
+    displayAd(): void {
+      console.log(`For Sale: ${this.type} with a ${this.screenSize}-inch screen for just $${this.price}!`);
+    }
+  
+    // Function to verify the pin code
+    unlockDevice(inputPin: string): void {
+      if (inputPin === this.pinCode) {
+        console.log(`${this.type}: Device unlocked successfully.`);
+      } else {
+        console.log(`${this.type}: Incorrect PIN. Try again.`);
+      }
+    }
+  }
+  

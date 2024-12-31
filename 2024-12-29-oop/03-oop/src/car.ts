@@ -5,7 +5,8 @@ export default class Car {
     public year: number;
     public price: number;
     private serialNumber?: string; 
-    // public massage:function saleMassage() {console.log(`The ${this.make} ${this.model} is on sale for ${this.price}!`);};
+
+    public vat = 17;
     public massage: () => void;
 
     constructor(make: string, model: string, diesel: boolean, year: number, price: number) {
@@ -35,5 +36,9 @@ export default class Car {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
         return hashHex;
+    }
+
+    public getFullPrice(): number {
+        return this.price + this.price * this.vat / 100;
     }
 }
