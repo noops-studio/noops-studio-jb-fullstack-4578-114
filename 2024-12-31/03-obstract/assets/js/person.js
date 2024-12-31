@@ -5,4 +5,7 @@ export default class Person {
         this.name = name;
         this.birthdate = birthdate;
     }
+    printName() {
+        console.log(this.name);
+    }
 }
