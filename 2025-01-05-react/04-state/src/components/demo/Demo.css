@@ -1,0 +1,33 @@
+@font-face {
+    font-family: 'LED Digital 7';
+    font-style: normal;
+    font-weight: 400;
+    src: local('LED Digital 7'), url('https://fonts.cdnfonts.com/s/26571/led_digital_7.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'LED Digital 7';
+    font-style: normal;
+    font-weight: 400;
+    src: local('LED Digital 7'), url('https://fonts.cdnfonts.com/s/26571/led_digital_7_italic.woff') format('woff');
+}
+
+.Demo-timer  {
+    background-color: #000; /* Black background */
+    color: #0f0; /* Green text color */
+    font-size: 3em; /* Increase font size for visibility */
+    padding: 15px 25px; /* Add padding around the text */
+    border-radius: 12px; /* Rounded corners for modern look */
+    display: inline-block; /* Fit the size to content */
+    text-align: center !important; /* Center align the text */
+    box-shadow: 0 0 15px #0f0; /* Add glowing green effect */
+    letter-spacing: 3px; /* Space out the letters slightly */
+}
+
+.Demo-timer-font {
+    font-family: 'LED Digital 7'; /* Use the custom font */
+}
+
+.Demo-timer p {
+    margin: 0; /* Remove default margin for p tag */
+}
