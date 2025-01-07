@@ -1,0 +1,41 @@
+.Header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center; /* Ensures alignment of nav and logo */
+    padding: 10px;
+    background-color: #f8f9fa; /* Light gray background, similar to Bootstrap's */
+    border-bottom: 1px solid #dee2e6; /* Add subtle border */
+}
+
+.Header nav {
+    display: flex;
+    flex-direction: row;
+    gap: 15px; /* Adjust spacing between nav links */
+}
+
+.logob {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+    display: block;
+    border-radius: 50%; /* Optional: make logo circular */
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #495057; /* Default text color */
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 5px; /* Rounded corners */
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-link.active {
+    color: #fff; /* Active link text color */
+    background-color: #007bff; /* Bootstrap primary color for active link */
+}
+
+.nav-link:hover {
+    color: #007bff; /* Change text color on hover */
+}
