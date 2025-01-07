@@ -17,7 +17,7 @@ export default function Layout() {
                 <Followers />
             </aside>
             <main>
-                main
+
             </main>
             <footer>
                 <Footer />
