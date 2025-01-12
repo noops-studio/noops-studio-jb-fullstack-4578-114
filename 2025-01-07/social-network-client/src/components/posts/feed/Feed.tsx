@@ -1,21 +1,23 @@
-import Post from '../../../models/posts/Post'
-import feed from '../../../services/Feed'
+import { useEffect, useState } from 'react'
 import './Feed.css'
-import { useState,useEffect } from 'react'
+import Post from '../../../models/post/Post'
+import feed from '../../../services/feed'
 
-const Feed = (): JSX.Element => {
-    const [post,setPosts] = useState<Post[]>([])
-    
+export default function Feed() {
+    const [posts, setPosts] = useState<Post[]>([])
+
     useEffect(() => {
-        feed.getFeed().then(setPosts).catch(alert)
-    },[])
+        feed.getFeed()
+            .then(setPosts)
+            .catch(alert)
 
+    }, [])
 
     return (
         <div className='Feed'>
-            {post.map(({id,title}) => <li key={id}>{title}</li>)}
+            <ul>
+                {posts.map(({id, title}) => <li key={id}>{title}</li>)}
+            </ul>
         </div>
     )
 }
-
-export default Feed;

@@ -1,21 +1,23 @@
-import Post from '../../../models/posts/Post'
-import profile from '../../../services/Profile.ts'
+import { useEffect, useState } from 'react'
 import './Profile.css'
-import { useState,useEffect } from 'react'
+import PostModel from '../../../models/posts/Post'
+import profile from '../../../services/Profile'
+import Post from '../post/Post'
 
-const Profile = (): JSX.Element => {
-    const [post,setPosts] = useState<Post[]>([])
-    
+export default function Profile(): JSX.Element {
+
+    // posts: Post[]
+    const [posts, setPosts] = useState<PostModel[]>([])
+
     useEffect(() => {
-        profile.getProfile().then(setPosts).catch(alert)
-    },[])
-
+        profile.getProfile()
+            .then(setPosts)
+            .catch(alert)
+    }, [])
 
     return (
         <div className='Profile'>
-            {post.map(({id,title}) => <li key={id}>{title}</li>)}
+            {posts.map(({id}) => <Post key={id}></Post>)}
         </div>
     )
 }
-
-export default Profile;
