@@ -1,5 +1,5 @@
-import Followers from '../followers/Followers'
-import Following from '../following/Following'
+import Folowers from '../folowers/Folowers'
+import Followings from '../following/Following'
 import Footer from '../footer/Footer'
 import Header from '../header/Header'
 import Routing from '../routing/Routing'
@@ -12,10 +12,10 @@ export default function Layout() {
                 <Header />                
             </header>                
             <aside>
-                <Following />
+                <Followings />
             </aside>
             <aside>
-                <Followers />
+                <Folowers />
             </aside>
             <main>
                 <Routing/>

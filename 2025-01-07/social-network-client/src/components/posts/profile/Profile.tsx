@@ -1,9 +1,9 @@
-
 import Post from '../../../models/posts/Post'
-import profile from '../../../services/Profile'
+import profile from '../../../services/Profile.ts'
 import './Profile.css'
 import { useState,useEffect } from 'react'
-export default function Profile():JSX.Element {
+
+const Profile = (): JSX.Element => {
     const [post,setPosts] = useState<Post[]>([])
     
     useEffect(() => {
@@ -17,3 +17,5 @@ export default function Profile():JSX.Element {
         </div>
     )
 }
+
+export default Profile;

@@ -1,13 +1,13 @@
 import axios from "axios";
 import Post from "../models/posts/Post";
 
-class Profile {
-    async getProfile(): Promise<Post[]> {
+class Feed {
+    async getFeed(): Promise<Post[]> {
         const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/allow/posts`);
         return response.data;
     }
 }
 
-const profile = new Profile();
-console.log(profile);
-export default profile;
+const feed = new Feed();
+console.log(feed);
+export default feed;
