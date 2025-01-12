@@ -17,7 +17,7 @@ export default function Profile(): JSX.Element {
 
     return (
         <div className='Profile'>
-            {posts.map(({id}) => <Post key={id}></Post>)}
+            {posts.map(post => <Post key={post.id} post={post} ></Post>)}
         </div>
     )
 }
