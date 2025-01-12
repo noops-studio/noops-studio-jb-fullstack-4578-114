@@ -4,7 +4,7 @@ import User from "../models/users/Users";
 
 class Following {
     async getFollowing(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/allow/follows/following`);
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
         return response.data;
     }
 }

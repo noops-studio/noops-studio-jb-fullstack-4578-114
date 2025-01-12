@@ -3,7 +3,7 @@ import Post from "../models/posts/Post";
 
 class Feed {
     async getFeed(): Promise<Post[]> {
-        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/allow/posts`);
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/posts`);
         return response.data;
     }
 }

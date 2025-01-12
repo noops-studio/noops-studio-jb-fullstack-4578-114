@@ -3,6 +3,7 @@ import './Profile.css'
 import PostModel from '../../../models/posts/Post'
 import profile from '../../../services/Profile'
 import Post from '../post/Post'
+import NewPost from '../new/NewPost'
 
 export default function Profile(): JSX.Element {
 
@@ -15,8 +16,11 @@ export default function Profile(): JSX.Element {
             .catch(alert)
     }, [])
 
+
+
     return (
-        <div className='Profile'>
+        <div className='posts-container'>
+            <NewPost/>
             {posts.map(post => <Post key={post.id} post={post} ></Post>)}
         </div>
     )
