@@ -16,6 +16,7 @@ import { NavLink } from 'react-router-dom';
 interface Link {
   path: string;
   name: string;
+  type: 'menu' | 'settings';
 }
 
 interface ResponsiveAppBarProps {
@@ -42,6 +43,10 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
     setAnchorElUser(null);
   };
 
+  // Separate links into menu and settings categories
+  const menuLinks = links.filter((link) => link.type === 'menu');
+  const settingsLinks = links.filter((link) => link.type === 'settings');
+
   return (
     <AppBar position="static">
       <Container maxWidth="xl">
@@ -65,6 +70,7 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
             LOGO
           </Typography>
 
+          {/* Mobile menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
             <IconButton
               size="large"
@@ -92,7 +98,7 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
               onClose={handleCloseNavMenu}
               sx={{ display: { xs: 'block', md: 'none' } }}
             >
-              {links.map((link) => (
+              {menuLinks.map((link) => (
                 <MenuItem key={link.name} onClick={handleCloseNavMenu}>
                   <NavLink
                     to={link.path}
@@ -109,27 +115,9 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
             </Menu>
           </Box>
 
-          <Typography
-            variant="h5"
-            noWrap
-            component="a"
-            href="#"
-            sx={{
-              mr: 2,
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
-
+          {/* Desktop menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {links.map((link) => (
+            {menuLinks.map((link) => (
               <NavLink
                 key={link.name}
                 to={link.path}
@@ -146,6 +134,7 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
             ))}
           </Box>
 
+          {/* User settings menu */}
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
@@ -168,7 +157,20 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
               open={Boolean(anchorElUser)}
               onClose={handleCloseUserMenu}
             >
-              {/* Add user menu items here */}
+              {settingsLinks.map((link) => (
+                <MenuItem key={link.name} onClick={handleCloseUserMenu}>
+                  <NavLink
+                    to={link.path}
+                    style={({ isActive }) => ({
+                      color: isActive ? '#000' : 'rgba(0, 0, 0, 0.87)',
+                      textDecoration: 'none',
+                      display: 'block',
+                    })}
+                  >
+                    {link.name}
+                  </NavLink>
+                </MenuItem>
+              ))}
             </Menu>
           </Box>
         </Toolbar>

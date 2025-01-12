@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Container, Grid, Card, CardContent, Typography } from '@mui/material'
 import PostModel from '../../../models/posts/Post'
 import feed from '../../../services/Feed'
-
+import './Feed.css'
 export default function Feed() {
     const [posts, setPosts] = useState<PostModel[]>([])
 
@@ -12,7 +12,7 @@ export default function Feed() {
             .catch(alert)
     }, [])
 
-    return (
+    return (<div className='feed-container'>
         <Container maxWidth="md" style={{ marginTop: '20px' }}>
             <Grid container spacing={3}>
                 {posts.map(({ id, title }) => (
@@ -28,5 +28,6 @@ export default function Feed() {
                 ))}
             </Grid>
         </Container>
+        </div>
     )
 }
