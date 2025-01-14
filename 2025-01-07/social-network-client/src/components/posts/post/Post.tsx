@@ -4,6 +4,7 @@
 import CommentDraft from '../../../models/comment/CommentDraft';
 import PostModel from '../../../models/posts/Post';
 import InsertComment from '../../../services/addComment';
+import updatePost from '../../../services/updatePost';
 import './Post.css';
 import PostsUi from './PostUi';
 
@@ -37,10 +38,21 @@ export default function Post(props: PostProps): JSX.Element {
     };
 
     return (
-        <PostsUi
-            post={post}
-            onDelete={onDelete}
-            onAddComment={handleAddComment}
-        />
+<PostsUi
+  post={post}
+  onDelete={onDelete}
+  onAddComment={handleAddComment}
+  onSavePost={async (updatedPost) => {
+    try {
+      await updatePost(post.id, updatedPost); // Replace with your updatePost logic
+      setPosts((prevPosts) =>
+        prevPosts.map((p) => (p.id === post.id ? { ...p, ...updatedPost } : p))
+      );
+    } catch (error) {
+      console.error("Error updating post:", error);
+    }
+  }}
+/>
+
     );
 }

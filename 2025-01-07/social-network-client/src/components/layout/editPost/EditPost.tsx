@@ -1,59 +1,54 @@
-import { useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
-import editPostData from "../../../services/GetSinglePost";
-import EditPostUi from "./EditPostUi";
-import Post from "../../../models/posts/Post";
-import updatePost from "../../../services/updatePost";
-import PostDraft from "../../../models/posts/PostDraft";
+import React, { useState } from "react";
+import {
+  Typography,
+  Card,
+  CardContent,
+  IconButton,
+  Box,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import EditPostUi from "../../layout/editPost/EditPostUi";
+import PostModel from "../../../models/posts/Post";
 
-export default function EditPost() {
-  const location = useLocation();
-  const { id } = location.state || {};
+interface PostsUiProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<boolean>;
+  onSavePost: (post: { title: string; body: string }) => Promise<void>;
+}
 
-  const [postData, setPostData] = useState<Post | null>(null);
+export default function PostsUi({ post, onDelete, onSavePost }: PostsUiProps) {
+  const { id, title, body, createdAt } = post;
 
-  useEffect(() => {
-    async function fetchPostData() {
-      try {
-        const data = await editPostData.getSinglePost(id);
-        console.log("Fetched Post Data:", data); // Debugging log
-        setPostData(data);
-      } catch (error) {
-        console.error("Error fetching post data:", error);
-      }
-    }
-
-    if (id) {
-      fetchPostData();
-    } else {
-      console.warn("No post ID provided in location state.");
-    }
-  }, [id]);
-
-  const handleSave = (updatedPost: PostDraft) => {
-    console.log("Updated Post:", updatedPost);
-    try {
-        const updateData = {title:updatedPost.title,body:updatedPost.body};
-        const id = postData.id
-        console.log("Updated Post:", updateData);
-        console.log("Updated Post:", id);
-        updatePost(id, updateData);
-    } catch (error) {
-      console.error("Error saving post:", error);
-        
-    }
+  const handleSavePost = async (updatedPost: { title: string; body: string }) => {
+    await onSavePost(updatedPost);
   };
 
-  if (!postData) {
-    return <div>Loading...</div>;
-  }
-console.log(postData.id);
   return (
-    <EditPostUi
-        postId={postData.id}
-        title={postData.title}
-        body={postData.body}
-        onSave={handleSave}
-    />
+    <Card className="post-card">
+      <Box className="toolbar">
+        <Typography variant="subtitle1">
+          {title} at {new Date(createdAt).toLocaleString()}
+        </Typography>
+
+        <Box>
+          <IconButton aria-label="edit" color="primary">
+            <EditPostUi
+              title={title}
+              body={body}
+              postId={id}
+              onSave={handleSavePost}
+            />
+          </IconButton>
+          <IconButton
+            aria-label="delete"
+            color="error"
+            onClick={() => onDelete(id)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      </Box>
+    </Card>
   );
 }

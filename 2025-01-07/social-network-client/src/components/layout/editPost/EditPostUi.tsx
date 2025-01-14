@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Box, Typography, TextField, Button, Modal } from '@mui/material';
+import React, { useState } from "react";
+import { Box, Typography, TextField, Button, Modal } from "@mui/material";
+import { Editor } from "@tinymce/tinymce-react";
 
 interface EditPostUiProps {
   title: string;
@@ -13,13 +14,8 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
   const [postBody, setPostBody] = useState(body);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = () => setIsModalOpen(false);
 
   const handleConfirmUpdate = async () => {
     setIsModalOpen(false);
@@ -28,63 +24,57 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
 
   return (
     <Box sx={{ maxWidth: 600, margin: "auto", padding: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Edit Post
-      </Typography>
-      <TextField
-        fullWidth
-        label="Title"
-        value={postTitle}
-        onChange={(e) => setPostTitle(e.target.value)}
-        margin="normal"
-      />
-      <TextField
-        fullWidth
-        label="Body"
-        value={postBody}
-        onChange={(e) => setPostBody(e.target.value)}
-        margin="normal"
-        multiline
-        rows={4}
-      />
       <Button variant="contained" color="primary" onClick={handleOpenModal}>
-        Save
+        Edit Post
       </Button>
 
       <Modal
         open={isModalOpen}
         onClose={handleCloseModal}
-        aria-labelledby="confirmation-modal"
-        aria-describedby="confirmation-details"
+        aria-labelledby="edit-post-modal"
+        aria-describedby="edit-post-details"
       >
         <Box
           sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 400,
-            bgcolor: 'background.paper',
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 600,
+            bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
-            borderRadius: 1,
+            borderRadius: 2,
           }}
         >
-          <Typography id="confirmation-modal" variant="h6" gutterBottom>
-            Confirm Update
+          <Typography variant="h5" gutterBottom>
+            Edit Post
           </Typography>
-          <Typography id="confirmation-details" gutterBottom>
-            <strong>New Title:</strong> {postTitle}
-          </Typography>
-          <Typography gutterBottom>
-            <strong>New Body:</strong> {postBody}
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+          <TextField
+            fullWidth
+            label="Title"
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            margin="normal"
+          />
+          <Editor
+            apiKey={import.meta.env.VITE_TINYMCE_KEY}
+            value={postBody}
+            init={{
+              height: 300,
+              menubar: false,
+              plugins: ["lists", "link", "emoticons"],
+              toolbar:
+                "undo redo | bold italic | bullist numlist outdent indent | emoticons",
+            }}
+            onEditorChange={(content) => setPostBody(content)}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
             <Button variant="outlined" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button variant="contained" color="primary" onClick={handleConfirmUpdate}>
-              Confirm
+              Save
             </Button>
           </Box>
         </Box>
