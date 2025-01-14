@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-build-classic": "^44.1.0",
+    "@ckeditor/ckeditor5-react": "^9.4.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.3.1",
@@ -18,8 +20,12 @@
     "@sentry/react": "^8.48.0",
     "@sentry/tracing": "^7.120.3",
     "@sentry/vite-plugin": "^2.23.0",
+    "@tinymce/tinymce-react": "^5.1.1",
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
+    "ckeditor4-react": "^4.1.2",
+    "ckeditor5": "^44.1.0",
+    "emoji-picker-react": "^4.12.0",
     "js-cookie": "^3.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
