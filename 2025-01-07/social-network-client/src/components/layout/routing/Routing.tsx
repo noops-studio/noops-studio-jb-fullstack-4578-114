@@ -3,6 +3,8 @@ import Profile from "../../posts/profile/Profile";
 import Feed from "../../posts/feed/Feed";
 import NotFound from "../not-found/NotFound";
 import LoginPage from "../login/login";
+import LogoutPage from "../logout/logout";
+import EditPost from "../editPost/EditPost";
 
 // Utility function to check if the user is authenticated
 const isAuthenticated = (): boolean => {
@@ -22,7 +24,9 @@ export default function Routing(): JSX.Element {
                 path="/feed"
                 element={isAuthenticated() ? <Feed /> : <Navigate to="/login" />}
             />
-            
+            <Route path="/edit"  element={isAuthenticated() ? <EditPost /> : <Navigate to="/login" />} />
+            {/* log out page */}
+            <Route path="/logout" element={<LogoutPage />} />
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
             

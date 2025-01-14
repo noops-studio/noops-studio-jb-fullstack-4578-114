@@ -20,6 +20,17 @@ export default function Post(props: PostProps): JSX.Element {
         }
     }
 
+
+    async function handleAddComment(postId: string, comment: string): Promise<void> {
+        try {
+            // await profile.addComment(postId, comment);
+            console.log(`Comment added to post with id ${postId}: ${comment}`);
+        } catch (e) {
+            console.error(`Failed to add comment to post with id ${postId}:`, e);
+        }
+    }
+
     // Pass the data and the removePost function to the PostsUi component
-    return PostsUi({ ...post, onDelete: removePost });
+     return <PostsUi post={post} onDelete={removePost} onAddComment={handleAddComment} />
+
 }

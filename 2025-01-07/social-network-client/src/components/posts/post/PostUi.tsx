@@ -10,20 +10,58 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  TextField,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import { useNavigate } from "react-router-dom";
 import "./Post.css";
 import PostModel from "../../../models/posts/Post";
 
-interface PostsUiProps extends PostModel {
-  onDelete: (id: string) => Promise<boolean>; // Assume onDelete returns a Promise<boolean>
+interface Comment {
+  id: string;
+  postId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    username: string;
+  };
+}
+
+interface PostModel {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  comments: Comment[];
+  user: {
+    id: string;
+    name: string;
+    username: string;
+  };
+}
+
+interface PostsUiProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<boolean>;
+  onAddComment: (postId: string, comment: string) => Promise<void>;
 }
 
 export default function PostsUi(props: PostsUiProps): JSX.Element {
-  const { title, body, createdAt, user, id, onDelete } = props;
+  const { post, onDelete, onAddComment } = props;
+  const { title, body, createdAt, user, id, comments } = post;
   const { name } = user;
   const [open, setOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const navigate = useNavigate();
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -36,7 +74,7 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
   const handleDelete = async () => {
     const isDeleted = await onDelete(id);
     if (isDeleted) {
-      setIsHidden(true); // Trigger fade-out
+      setIsHidden(true);
     }
     handleClose();
   };
@@ -45,8 +83,23 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
     if (isHidden) {
       const cardElement = document.getElementById(`post-card-${id}`);
       if (cardElement) {
-        cardElement.remove(); // Remove the card after the fade-out ends
+        cardElement.remove();
       }
+    }
+  };
+
+  const handleEdit = () => {
+    navigate("/edit", { state: { id } });
+  };
+
+  const toggleComments = () => {
+    setShowComments(!showComments);
+  };
+
+  const handleAddComment = async () => {
+    if (newComment.trim()) {
+      await onAddComment(id, newComment);
+      setNewComment("");
     }
   };
 
@@ -66,6 +119,16 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
           sx={{ position: "absolute", top: 8, right: 8 }}
         >
           <DeleteIcon />
+        </IconButton>
+
+        <IconButton
+          id="edit-button"
+          aria-label="edit"
+          color="primary"
+          onClick={handleEdit}
+          sx={{ position: "absolute", top: 8, right: 48 }}
+        >
+          <EditIcon />
         </IconButton>
 
         <CardContent>
@@ -88,14 +151,47 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
           <Typography variant="body1" mt={2}>
             {body}
           </Typography>
+          <Button onClick={toggleComments} sx={{ marginTop: 2 }} variant="outlined">
+            {showComments ? "Hide Comments" : "Show Comments"}
+          </Button>
+
+          {showComments && (
+            <div style={{ marginTop: 16 }}>
+              {comments.map((comment) => (
+                <div key={comment.id} style={{ marginBottom: 12 }}>
+                  <Typography variant="body2" color="text.primary">
+                    <strong>{comment.user.name}</strong>: {comment.body}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(comment.createdAt).toLocaleString()}
+                  </Typography>
+                </div>
+              ))}
+              <TextField
+                label="Add a comment"
+                variant="outlined"
+                fullWidth
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                sx={{ marginTop: 2 }}
+              />
+              <Button
+                onClick={handleAddComment}
+                variant="contained"
+                color="primary"
+                sx={{ marginTop: 1 }}
+              >
+                Submit Comment
+              </Button>
+            </div>
+          )}
         </CardContent>
 
         <Dialog open={open} onClose={handleClose}>
           <DialogTitle>Confirm Delete</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Are you sure you want to delete this post? This action cannot be
-              undone.
+              Are you sure you want to delete this post? This action cannot be undone.
             </DialogContentText>
           </DialogContent>
           <DialogActions>

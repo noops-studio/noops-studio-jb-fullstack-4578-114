@@ -7,7 +7,7 @@ export default function Header() {
   const links = [
     { path: '/profile', name: 'Profile' ,type: 'menu'},
     { path: '/feed', name: 'Feed' ,type: 'menu' },
-    {path: '/settings', name: 'Settings', type: 'settings' },
+    {path: '/logout', name: 'logout', type: 'settings' },
   ];
 
   return <ResponsiveAppBar links={links} />;
