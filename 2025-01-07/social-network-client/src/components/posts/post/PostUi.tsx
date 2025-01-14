@@ -22,15 +22,19 @@ interface PostsUiProps {
   post: PostModel;
   onDelete: (id: string) => Promise<boolean>;
   onAddComment: (postId: string, comment: string) => Promise<void>;
+  onSavePost: (post: { title: string; body: string }) => Promise<void>;
 }
 
 export default function PostsUi(props: PostsUiProps): JSX.Element {
-  const { post, onDelete, onAddComment } = props;
+  const { post, onDelete, onAddComment, onSavePost } = props;
   const { title, body, createdAt, id, comments = [] } = post;
   const userName = post.user?.name ?? "Anonymous";
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openCommentsModal, setOpenCommentsModal] = useState(false);
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [newPostBody, setNewPostBody] = useState(body || "");
+  const [newPostTitle, setNewPostTitle] = useState(title || "");
   const [newComment, setNewComment] = useState("");
 
   const navigate = useNavigate();
@@ -46,6 +50,13 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
     if (newComment.trim()) {
       await onAddComment(id, newComment);
       setNewComment("");
+    }
+  };
+
+  const handleSavePost = async () => {
+    if (newPostTitle.trim() && newPostBody.trim()) {
+      await onSavePost({ title: newPostTitle, body: newPostBody });
+      setIsEditingPost(false);
     }
   };
 
@@ -74,7 +85,7 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
           <IconButton
             aria-label="edit"
             color="primary"
-            onClick={() => navigate("/edit", { state: { id } })}
+            onClick={() => setIsEditingPost(true)}
           >
             <EditIcon />
           </IconButton>
@@ -90,12 +101,56 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
       </Box>
 
       <CardContent>
-        <Typography variant="h5" className="post-title" gutterBottom>
-          {title}
-        </Typography>
-        <Typography variant="body1" className="post-body" mt={2}>
-          {body}
-        </Typography>
+        {isEditingPost ? (
+          <>
+            <input
+              type="text"
+              value={newPostTitle}
+              onChange={(e) => setNewPostTitle(e.target.value)}
+              placeholder="Post Title"
+              className="post-title-input"
+            />
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_KEY}
+              value={newPostBody}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: ["lists", "link", "emoticons"],
+                toolbar:
+                  "undo redo | bold italic | bullist numlist outdent indent | emoticons",
+              }}
+              onEditorChange={(content) => setNewPostBody(content)}
+            />
+            <Box className="post-edit-actions">
+              <Button
+                onClick={handleSavePost}
+                variant="contained"
+                color="primary"
+              >
+                Save
+              </Button>
+              <Button
+                onClick={() => setIsEditingPost(false)}
+                variant="outlined"
+                color="secondary"
+              >
+                Cancel
+              </Button>
+            </Box>
+          </>
+        ) : (
+          <>
+            <Typography variant="h5" className="post-title" gutterBottom>
+              {title}
+            </Typography>
+            <Typography
+              variant="body1"
+              className="post-body"
+              dangerouslySetInnerHTML={{ __html: body }}
+            />
+          </>
+        )}
       </CardContent>
 
       {/* Comments Modal */}
