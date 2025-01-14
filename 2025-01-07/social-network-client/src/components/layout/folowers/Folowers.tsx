@@ -1,24 +1,40 @@
-import {useState,useEffect} from 'react';
-import './Folowers.css';
-import Followers from './FolowersUi';
-import followerService from '../../../services/FollowersService.ts'
-import User from '../../../models/users/Users.ts';
+import { useState, useEffect } from "react";
+import "./Folowers.css";
+import Followers from "./FolowersUi";
+import followerService from "../../../services/FollowersService";
+import User from "../../../models/users/Users";
+
 export default function Folowers(): JSX.Element {
-  // const followerNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve'];
+  const [followers, setFollowers] = useState<
+    { id: string; name: string; isFollowing: boolean }[]
+  >([]);
 
+  const fetchFollowers = async () => {
+    try {
+      const followersData = await followerService.getFollowers();
+      const followingData = await followerService.getFollowing();
 
-const [follower,setFolowers] = useState<User[]>([])  
+      const followingIds = new Set(followingData.map((user) => user.id));
+      setFollowers(
+        followersData.map((user) => ({
+          id: user.id,
+          name: user.name,
+          isFollowing: followingIds.has(user.id),
+        }))
+      );
+    } catch (error) {
+      alert("Failed to fetch followers.");
+    }
+  };
 
-useEffect(()=>{
-  followerService.getFollowers().then(setFolowers).catch(alert)
-},[])
-console.log(follower)
-// now we will map the follower to get the names as a array of names
-const followerNames = follower.map(({name}) => name)
+  useEffect(() => {
+    fetchFollowers();
+  }, []);
+
   return (
-    <div className='Folowers' >
-      <h1>followers list</h1>
-      <Followers names={followerNames} />
+    <div className="Folowers">
+      <h1>Followers List</h1>
+      <Followers followers={followers} onUpdate={fetchFollowers} />
     </div>
   );
 }
