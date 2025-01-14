@@ -16,6 +16,7 @@ import CommentIcon from "@mui/icons-material/Comment";
 import { Editor } from "@tinymce/tinymce-react";
 import { useNavigate } from "react-router-dom";
 import PostModel from "../../../models/posts/Post";
+import './PostsUi.css';
 
 interface PostsUiProps {
   post: PostModel;
@@ -49,25 +50,14 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
   };
 
   return (
-    <Card sx={{ margin: 2, padding: 2, boxShadow: 3 }}>
+    <Card className="post-card">
       {/* Toolbar with Icons */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography variant="subtitle1" color="text.secondary">
+      <Box className="toolbar">
+        <Typography variant="subtitle1" className="post-header">
           <img
             src={`https://cdn.ozari.co.il/beery/noop.jpeg`}
             alt={`${userName}'s profile`}
-            style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              marginRight: "8px",
-            }}
+            className="profile-pic"
           />
           {userName} at {new Date(createdAt).toLocaleString()}
         </Typography>
@@ -100,10 +90,10 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
       </Box>
 
       <CardContent>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" className="post-title" gutterBottom>
           {title}
         </Typography>
-        <Typography variant="body1" mt={2}>
+        <Typography variant="body1" className="post-body" mt={2}>
           {body}
         </Typography>
       </CardContent>
@@ -118,7 +108,7 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
         <DialogTitle>Comments</DialogTitle>
         <DialogContent>
           {comments?.map((comment) => (
-            <div key={comment.id} style={{ marginBottom: 12 }}>
+            <div key={comment.id} className="comment-item">
               <Typography variant="body2" color="text.primary">
                 <strong>{comment.user?.name ?? "Anonymous"}</strong>:
                 <span dangerouslySetInnerHTML={{ __html: comment.body }} />
@@ -147,7 +137,7 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
             onClick={handleAddComment}
             variant="contained"
             color="primary"
-            sx={{ marginTop: 2 }}
+            className="submit-comment"
           >
             Submit Comment
           </Button>
