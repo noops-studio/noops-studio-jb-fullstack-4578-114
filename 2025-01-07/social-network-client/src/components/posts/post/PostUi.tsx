@@ -18,35 +18,6 @@ import { useNavigate } from "react-router-dom";
 import "./Post.css";
 import PostModel from "../../../models/posts/Post";
 
-interface Comment {
-  id: string;
-  postId: string;
-  userId: string;
-  body: string;
-  createdAt: string;
-  user: {
-    id: string;
-    name: string;
-    username: string;
-  };
-}
-
-interface PostModel {
-  id: string;
-  userId: string;
-  title: string;
-  body: string;
-  imageUrl: string;
-  createdAt: string;
-  updatedAt: string;
-  comments: Comment[];
-  user: {
-    id: string;
-    name: string;
-    username: string;
-  };
-}
-
 interface PostsUiProps {
   post: PostModel;
   onDelete: (id: string) => Promise<boolean>;
@@ -55,8 +26,9 @@ interface PostsUiProps {
 
 export default function PostsUi(props: PostsUiProps): JSX.Element {
   const { post, onDelete, onAddComment } = props;
-  const { title, body, createdAt, user, id, comments } = post;
-  const { name } = user;
+  const { title, body, createdAt, id, comments = [] } = post;
+  const userName = post.user?.name ?? 'Anonymous'; // Safe access with fallback
+  
   const [open, setOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -138,7 +110,7 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
           <Typography variant="subtitle1" color="text.secondary">
             <img
               src={`https://cdn.ozari.co.il/beery/noop.jpeg`}
-              alt={`${name}'s profile`}
+              alt={`${userName}'s profile`}
               style={{
                 width: "30px",
                 height: "30px",
@@ -146,7 +118,7 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
                 marginRight: "8px",
               }}
             />
-            {name} at {new Date(createdAt).toLocaleString()}
+            {userName} at {new Date(createdAt).toLocaleString()}
           </Typography>
           <Typography variant="body1" mt={2}>
             {body}
@@ -157,10 +129,10 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
 
           {showComments && (
             <div style={{ marginTop: 16 }}>
-              {comments.map((comment) => (
+              {comments?.map((comment) => (
                 <div key={comment.id} style={{ marginBottom: 12 }}>
                   <Typography variant="body2" color="text.primary">
-                    <strong>{comment.user.name}</strong>: {comment.body}
+                    <strong>{comment.user?.name ?? 'Anonymous'}</strong>: {comment.body}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {new Date(comment.createdAt).toLocaleString()}

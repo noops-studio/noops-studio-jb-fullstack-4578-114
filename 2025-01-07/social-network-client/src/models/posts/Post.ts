@@ -11,6 +11,3 @@ export default interface Post extends PostDraft {
     comments: Comment[];
     user: User;
 }
-
-
-

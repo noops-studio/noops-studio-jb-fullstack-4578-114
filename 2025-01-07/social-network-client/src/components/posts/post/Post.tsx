@@ -1,36 +1,38 @@
+
+
+// Post.tsx
+import CommentDraft from '../../../models/comment/CommentDraft';
 import PostModel from '../../../models/posts/Post';
-// import profile from '../../../services/Profile';
-import './Post.css'
+import InsertComment from '../../../services/addComment';
+import './Post.css';
 import PostsUi from './PostUi';
+
 interface PostProps {
     post: PostModel;
+    onDelete: (postId: string) => Promise<boolean>;
+    onUpdatePost: (postId: string) => Promise<void>;
 }
 
 export default function Post(props: PostProps): JSX.Element {
-    const { post } = props;
+    const { post, onDelete, onUpdatePost } = props;
 
-    async function removePost(id: string): Promise<void> {
+    const handleAddComment = async (postId: string, comment: string): Promise<void> => {
+        const commentData: CommentDraft = { postId, body: comment };
         try {
-            // await profile.removePost(id);
-            console.log(`Post with id ${id} has been deleted.`);
-            // now we will return a promise that contains a true
-            return Promise.resolve(true);
-        } catch (e) {
-            console.error(`Failed to delete post with id ${id}:`, e);
-        }
-    }
-
-
-    async function handleAddComment(postId: string, comment: string): Promise<void> {
-        try {
-            // await profile.addComment(postId, comment);
-            console.log(`Comment added to post with id ${postId}: ${comment}`);
+            const response = await InsertComment(commentData);
+            console.log(`Comment added to post with id ${postId}:`, response);
+            // Update the post to reflect the new comment
+            await onUpdatePost(postId);
         } catch (e) {
             console.error(`Failed to add comment to post with id ${postId}:`, e);
         }
-    }
+    };
 
-    // Pass the data and the removePost function to the PostsUi component
-     return <PostsUi post={post} onDelete={removePost} onAddComment={handleAddComment} />
-
+    return (
+        <PostsUi 
+            post={post} 
+            onDelete={onDelete} 
+            onAddComment={handleAddComment}
+        />
+    );
 }

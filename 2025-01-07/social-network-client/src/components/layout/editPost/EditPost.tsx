@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import editPostData from "../../../services/EditPost";
+import editPostData from "../../../services/GetSinglePost";
 import EditPostUi from "./EditPostUi";
 import Post from "../../../models/posts/Post";
 import updatePost from "../../../services/updatePost";
@@ -15,7 +15,7 @@ export default function EditPost() {
   useEffect(() => {
     async function fetchPostData() {
       try {
-        const data = await editPostData.getPostToEdit(id);
+        const data = await editPostData.getSinglePost(id);
         console.log("Fetched Post Data:", data); // Debugging log
         setPostData(data);
       } catch (error) {
