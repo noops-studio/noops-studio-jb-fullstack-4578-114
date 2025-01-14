@@ -27,8 +27,8 @@ interface PostsUiProps {
 export default function PostsUi(props: PostsUiProps): JSX.Element {
   const { post, onDelete, onAddComment } = props;
   const { title, body, createdAt, id, comments = [] } = post;
-  const userName = post.user?.name ?? 'Anonymous'; // Safe access with fallback
-  
+  const userName = post.user?.name ?? "Anonymous"; // Safe access with fallback
+
   const [open, setOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -123,7 +123,11 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
           <Typography variant="body1" mt={2}>
             {body}
           </Typography>
-          <Button onClick={toggleComments} sx={{ marginTop: 2 }} variant="outlined">
+          <Button
+            onClick={toggleComments}
+            sx={{ marginTop: 2 }}
+            variant="outlined"
+          >
             {showComments ? "Hide Comments" : "Show Comments"}
           </Button>
 
@@ -132,7 +136,8 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
               {comments?.map((comment) => (
                 <div key={comment.id} style={{ marginBottom: 12 }}>
                   <Typography variant="body2" color="text.primary">
-                    <strong>{comment.user?.name ?? 'Anonymous'}</strong>: {comment.body}
+                    <strong>{comment.user?.name ?? "Anonymous"}</strong>:{" "}
+                    {comment.body}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {new Date(comment.createdAt).toLocaleString()}
@@ -163,7 +168,8 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
           <DialogTitle>Confirm Delete</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Are you sure you want to delete this post? This action cannot be undone.
+              Are you sure you want to delete this post? This action cannot be
+              undone.
             </DialogContentText>
           </DialogContent>
           <DialogActions>

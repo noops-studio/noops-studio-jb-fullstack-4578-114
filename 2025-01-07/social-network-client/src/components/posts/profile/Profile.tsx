@@ -26,20 +26,16 @@ export default function Profile(): JSX.Element {
     };
 
     const handleAddPost = (newPost: PostModel) => {
-        try {
-            setPosts(prevPosts => [newPost, ...prevPosts]);
-        } catch (error) {
-            console.error('Error in InsertPost:', error);
-        }
+        setPosts((prevPosts) => [newPost, ...prevPosts]);
     };
-    
+
     const handleUpdatePost = async (postId: string) => {
         try {
             const postData = await getSinglePost.getSinglePost(postId);
             const updatedPost = postData[0];
-            
-            setPosts(prevPosts => 
-                prevPosts.map(post => 
+
+            setPosts((prevPosts) =>
+                prevPosts.map((post) =>
                     post.id === postId ? updatedPost : post
                 )
             );
@@ -50,8 +46,7 @@ export default function Profile(): JSX.Element {
 
     const handleDeletePost = async (postId: string): Promise<boolean> => {
         try {
-            // Assuming your delete API call is successful
-            setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+            setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
             return true;
         } catch (error) {
             console.error('Error deleting post:', error);
@@ -60,18 +55,17 @@ export default function Profile(): JSX.Element {
     };
 
     return (
-        <div className='posts-container'>
+        <div className="posts-container">
             <NewPost onAddPost={handleAddPost} />
-            {posts
-                .filter((post) => post && post.id)
-                .map((post) => (
-                    <Post 
-                        key={post.id} 
-                        post={post} 
-                        onUpdatePost={handleUpdatePost}
-                        onDelete={handleDeletePost}
-                    />
-                ))}
+            {posts.map((post) => (
+                <Post
+                    key={post.id}
+                    post={post}
+                    onUpdatePost={handleUpdatePost}
+                    onDelete={handleDeletePost}
+                    setPosts={setPosts} // Pass setPosts to Post component
+                />
+            ))}
         </div>
     );
 }
