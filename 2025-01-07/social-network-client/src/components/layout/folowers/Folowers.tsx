@@ -32,9 +32,9 @@ export default function Folowers(): JSX.Element {
   }, []);
 
   return (
-    <div className="Folowers">
-      <h1>Followers List</h1>
-      <Followers followers={followers} onUpdate={fetchFollowers} />
-    </div>
+<div className="h-full">
+  <h1 className="text-lg font-semibold mb-4">Followers List</h1>
+  <Followers followers={followers} onUpdate={fetchFollowers} />
+</div>
   );
 }

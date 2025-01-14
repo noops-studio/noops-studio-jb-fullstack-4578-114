@@ -1,0 +1,1718 @@
+
+# components/app/App.css
+.App {
+    height: 100%;
+}
+# components/app/App.tsx
+import { BrowserRouter,Route, Routes } from 'react-router-dom'
+import Layout from '../layout/layout/Layout'
+import './App.css'
+import LoginPage from '../layout/login/login'
+
+export default function App(): JSX.Element {
+    return (
+        <div className="App">
+            <BrowserRouter>
+            <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="*" element={<Layout />} />
+            </Routes>
+            </BrowserRouter>
+            
+        </div>
+    )
+}
+# components/layout/editPost/EditPost.tsx
+import React, { useState } from "react";
+import {
+  Typography,
+  Card,
+  CardContent,
+  IconButton,
+  Box,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import EditPostUi from "../../layout/editPost/EditPostUi";
+import PostModel from "../../../models/posts/Post";
+
+interface PostsUiProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<boolean>;
+  onSavePost: (post: { title: string; body: string }) => Promise<void>;
+}
+
+export default function PostsUi({ post, onDelete, onSavePost }: PostsUiProps) {
+  const { id, title, body, createdAt } = post;
+
+  const handleSavePost = async (updatedPost: { title: string; body: string }) => {
+    await onSavePost(updatedPost);
+  };
+
+  return (
+    <Card className="post-card">
+      <Box className="toolbar">
+        <Typography variant="subtitle1">
+          {title} at {new Date(createdAt).toLocaleString()}
+        </Typography>
+
+        <Box>
+          <IconButton aria-label="edit" color="primary">
+            <EditPostUi
+              title={title}
+              body={body}
+              postId={id}
+              onSave={handleSavePost}
+            />
+          </IconButton>
+          <IconButton
+            aria-label="delete"
+            color="error"
+            onClick={() => onDelete(id)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      </Box>
+    </Card>
+  );
+}
+
+# components/layout/editPost/EditPostUi.tsx
+import React, { useState } from "react";
+import { Box, Typography, TextField, Button, Modal } from "@mui/material";
+import { Editor } from "@tinymce/tinymce-react";
+
+interface EditPostUiProps {
+  title: string;
+  body: string;
+  postId: string;
+  onSave: (updatedPost: { title: string; body: string; postId: string }) => Promise<void>;
+}
+
+export default function EditPostUi({ title, body, postId, onSave }: EditPostUiProps) {
+  const [postTitle, setPostTitle] = useState(title);
+  const [postBody, setPostBody] = useState(body);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = () => setIsModalOpen(false);
+
+  const handleConfirmUpdate = async () => {
+    setIsModalOpen(false);
+    await onSave({ title: postTitle, body: postBody, postId });
+  };
+
+  return (
+    <Box sx={{ maxWidth: 600, margin: "auto", padding: 4 }}>
+      <Button variant="contained" color="primary" onClick={handleOpenModal}>
+        Edit Post
+      </Button>
+
+      <Modal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        aria-labelledby="edit-post-modal"
+        aria-describedby="edit-post-details"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 600,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="h5" gutterBottom>
+            Edit Post
+          </Typography>
+
+          {/* Title Input */}
+          <TextField
+            fullWidth
+            label="Title"
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            margin="normal"
+            variant="outlined"
+            placeholder="Enter a title for your post"
+          />
+
+          {/* Post Body Editor */}
+          <Editor
+            apiKey={import.meta.env.VITE_TINYMCE_KEY}
+            value={postBody}
+            init={{
+              height: 300,
+              menubar: false,
+              plugins: ["lists", "link", "emoticons"],
+              toolbar:
+                "undo redo | bold italic | bullist numlist outdent indent | emoticons",
+            }}
+            onEditorChange={(content) => setPostBody(content)}
+          />
+
+          {/* Action Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
+            <Button variant="outlined" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button variant="contained" color="primary" onClick={handleConfirmUpdate}>
+              Save
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+    </Box>
+  );
+}
+
+# components/layout/follow/FollowButton.tsx
+import React, { useState } from "react";
+import { Button } from "@mui/material";
+import followerService from "../../../services/FollowersService";
+
+interface FollowButtonProps {
+  userId: string;
+  isFollowing: boolean; // Whether the user is currently following
+  onUpdate: () => void; // Callback to refresh the followers/following list
+}
+
+const FollowButton: React.FC<FollowButtonProps> = ({ userId, isFollowing, onUpdate }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleFollowUnfollow = async () => {
+    setLoading(true);
+    try {
+      if (isFollowing) {
+        await followerService.unfollowUser(userId);
+      } else {
+        await followerService.followUser(userId);
+      }
+      onUpdate(); // Refresh the followers and following list
+    } catch (error) {
+      alert(`Failed to ${isFollowing ? "unfollow" : "follow"} user. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="contained"
+      color={isFollowing ? "secondary" : "primary"}
+      onClick={handleFollowUnfollow}
+      disabled={loading}
+    >
+      {loading ? "Processing..." : isFollowing ? "Unfollow" : "Follow"}
+    </Button>
+  );
+};
+
+export default FollowButton;
+
+# components/layout/following/Following.css
+
+# components/layout/following/Following.tsx
+import { useState, useEffect } from "react";
+import "./Following.css";
+import FollowingUi from "./FollowingUi";
+import followerService from "../../../services/FollowersService";
+import User from "../../../models/users/Users";
+
+export default function Followings(): JSX.Element {
+  const [following, setFollowing] = useState<
+    { id: string; name: string; isFollowing: boolean }[]
+  >([]);
+
+  const fetchFollowing = async () => {
+    try {
+      const followingData = await followerService.getFollowing();
+      setFollowing(
+        followingData.map((user) => ({
+          id: user.id,
+          name: user.name,
+          isFollowing: true, // Since these are in the following list, they are all being followed
+        }))
+      );
+    } catch (error) {
+      alert("Failed to fetch following list.");
+    }
+  };
+
+  useEffect(() => {
+    fetchFollowing();
+  }, []);
+
+  return (
+    <div className="Following">
+      <h1>Following List</h1>
+      <FollowingUi following={following} onUpdate={fetchFollowing} />
+    </div>
+  );
+}
+
+# components/layout/following/FollowingUi.tsx
+import React from "react";
+import {
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Box,
+  Avatar,
+} from "@mui/material";
+import { deepPurple } from "@mui/material/colors";
+import FollowButton from "../follow/FollowButton";
+
+interface FollowingProps {
+  following: { id: string; name: string; isFollowing: boolean }[]; // Update type to include `isFollowing`
+  onUpdate: () => void; // Callback to refresh the list
+}
+
+const Following: React.FC<FollowingProps> = ({ following, onUpdate }) => {
+  return (
+    <Box sx={{ flexGrow: 1, padding: 2, maxHeight: "200px", overflowY: "auto" }}>
+      <Grid container direction="column" spacing={2}>
+        {following.map(({ id, name, isFollowing }) => (
+          <Grid item xs={12} key={id}>
+            <Card sx={{ display: "flex", alignItems: "center", padding: 2 }}>
+              <Avatar sx={{ bgcolor: deepPurple[500], marginRight: 2 }}>
+                {name[0].toUpperCase()}
+              </Avatar>
+              <CardContent>
+                <Typography variant="h6" component="div">
+                  {name}
+                </Typography>
+                <FollowButton
+                  userId={id}
+                  isFollowing={isFollowing}
+                  onUpdate={onUpdate}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+export default Following;
+
+# components/layout/folowers/Folowers.css
+
+# components/layout/folowers/Folowers.tsx
+import { useState, useEffect } from "react";
+import "./Folowers.css";
+import Followers from "./FolowersUi";
+import followerService from "../../../services/FollowersService";
+import User from "../../../models/users/Users";
+
+export default function Folowers(): JSX.Element {
+  const [followers, setFollowers] = useState<
+    { id: string; name: string; isFollowing: boolean }[]
+  >([]);
+
+  const fetchFollowers = async () => {
+    try {
+      const followersData = await followerService.getFollowers();
+      const followingData = await followerService.getFollowing();
+
+      const followingIds = new Set(followingData.map((user) => user.id));
+      setFollowers(
+        followersData.map((user) => ({
+          id: user.id,
+          name: user.name,
+          isFollowing: followingIds.has(user.id),
+        }))
+      );
+    } catch (error) {
+      alert("Failed to fetch followers.");
+    }
+  };
+
+  useEffect(() => {
+    fetchFollowers();
+  }, []);
+
+  return (
+    <div className="Folowers">
+      <h1>Followers List</h1>
+      <Followers followers={followers} onUpdate={fetchFollowers} />
+    </div>
+  );
+}
+
+# components/layout/folowers/FolowersUi.tsx
+import React from "react";
+import {
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  Box,
+  Avatar,
+} from "@mui/material";
+import { deepPurple } from "@mui/material/colors";
+import FollowButton from "../follow/FollowButton";
+
+interface FollowersProps {
+  followers: { id: string; name: string; isFollowing: boolean }[];
+  onUpdate: () => void; // Callback to refresh the list
+}
+
+const Followers: React.FC<FollowersProps> = ({ followers, onUpdate }) => {
+  return (
+    <Box sx={{ flexGrow: 1, padding: 2, maxHeight: "200px", overflowY: "auto" }}>
+      <Grid container direction="column" spacing={2}>
+        {followers.map(({ id, name, isFollowing }) => (
+          <Grid item xs={12} key={id}>
+            <Card sx={{ display: "flex", alignItems: "center", padding: 2 }}>
+              <Avatar sx={{ bgcolor: deepPurple[500], marginRight: 2 }}>
+                {name[0].toUpperCase()}
+              </Avatar>
+              <CardContent>
+                <Typography variant="h6" component="div">
+                  {name}
+                </Typography>
+                <FollowButton
+                  userId={id}
+                  isFollowing={isFollowing}
+                  onUpdate={onUpdate}
+                />
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+export default Followers;
+
+# components/layout/footer/Footer.css
+
+# components/layout/footer/Footer.tsx
+import './Footer.css'
+
+export default function Footer() {
+    return (
+        <div className='Footer'>
+            <p>server is {import.meta.env.VITE_REST_SERVER_URL}</p>            
+        </div>
+    )
+}
+# components/layout/header/Header.css
+.Header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center; /* Ensures alignment of nav and logo */
+    padding: 10px;
+    background-color: #f8f9fa; /* Light gray background, similar to Bootstrap's */
+    border-bottom: 1px solid #dee2e6; /* Add subtle border */
+}
+
+.Header nav {
+    display: flex;
+    flex-direction: row;
+    gap: 15px; /* Adjust spacing between nav links */
+}
+
+.logob {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+    display: block;
+    border-radius: 50%; /* Optional: make logo circular */
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #495057; /* Default text color */
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 5px; /* Rounded corners */
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-link.active {
+    color: #fff; /* Active link text color */
+    background-color: #007bff; /* Bootstrap primary color for active link */
+}
+
+.nav-link:hover {
+    color: #007bff; /* Change text color on hover */
+}
+
+# components/layout/header/Header.tsx
+// Header.tsx
+import React from 'react';
+import { ResponsiveAppBar } from './MuiHeader';
+import { patch } from '@mui/material';
+
+export default function Header() {
+  const links = [
+    { path: '/profile', name: 'Profile' ,type: 'menu'},
+    { path: '/feed', name: 'Feed' ,type: 'menu' },
+    {path: '/logout', name: 'logout', type: 'settings' },
+  ];
+
+  return <ResponsiveAppBar links={links} />;
+}
+
+# components/layout/header/MuiHeader.tsx
+// MuiHeader.tsx
+import React from 'react';
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Toolbar from '@mui/material/Toolbar';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Menu from '@mui/material/Menu';
+import MenuIcon from '@mui/icons-material/Menu';
+import Container from '@mui/material/Container';
+import Avatar from '@mui/material/Avatar';
+import Tooltip from '@mui/material/Tooltip';
+import MenuItem from '@mui/material/MenuItem';
+import { NavLink } from 'react-router-dom';
+
+interface Link {
+  path: string;
+  name: string;
+  type: 'menu' | 'settings';
+}
+
+interface ResponsiveAppBarProps {
+  links: Link[];
+}
+
+export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => {
+  const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
+  const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
+
+  const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElNav(event.currentTarget);
+  };
+
+  const handleCloseNavMenu = () => {
+    setAnchorElNav(null);
+  };
+
+  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorElUser(event.currentTarget);
+  };
+
+  const handleCloseUserMenu = () => {
+    setAnchorElUser(null);
+  };
+
+  // Separate links into menu and settings categories
+  const menuLinks = links.filter((link) => link.type === 'menu');
+  const settingsLinks = links.filter((link) => link.type === 'settings');
+
+  return (
+    <AppBar position="static">
+      <Container maxWidth="xl">
+        <Toolbar disableGutters>
+          <MenuIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+          <Typography
+            variant="h6"
+            noWrap
+            component="a"
+            href="#"
+            sx={{
+              mr: 2,
+              display: { xs: 'none', md: 'flex' },
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              letterSpacing: '.3rem',
+              color: 'inherit',
+              textDecoration: 'none',
+            }}
+          >
+            LOGO
+          </Typography>
+
+          {/* Mobile menu */}
+          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+            <IconButton
+              size="large"
+              aria-label="account of current user"
+              aria-controls="menu-appbar"
+              aria-haspopup="true"
+              onClick={handleOpenNavMenu}
+              color="inherit"
+            >
+              <MenuIcon />
+            </IconButton>
+            <Menu
+              id="menu-appbar"
+              anchorEl={anchorElNav}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+              open={Boolean(anchorElNav)}
+              onClose={handleCloseNavMenu}
+              sx={{ display: { xs: 'block', md: 'none' } }}
+            >
+              {menuLinks.map((link) => (
+                <MenuItem key={link.name} onClick={handleCloseNavMenu}>
+                  <NavLink
+                    to={link.path}
+                    style={({ isActive }) => ({
+                      color: isActive ? '#fff' : 'rgba(0, 0, 0, 0.87)',
+                      textDecoration: 'none',
+                      display: 'block',
+                    })}
+                  >
+                    {link.name}
+                  </NavLink>
+                </MenuItem>
+              ))}
+            </Menu>
+          </Box>
+
+          {/* Desktop menu */}
+          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+            {menuLinks.map((link) => (
+              <NavLink
+                key={link.name}
+                to={link.path}
+                style={({ isActive }) => ({
+                  color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
+                  textDecoration: 'none',
+                  margin: '16px 8px',
+                  display: 'block',
+                })}
+                onClick={handleCloseNavMenu}
+              >
+                {link.name}
+              </NavLink>
+            ))}
+          </Box>
+
+          {/* User settings menu */}
+          <Box sx={{ flexGrow: 0 }}>
+            <Tooltip title="Open settings">
+              <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+                <Avatar alt="User Avatar" src="https://cdn.ozari.co.il/beery/noop.jpeg" />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              sx={{ mt: '45px' }}
+              id="menu-appbar"
+              anchorEl={anchorElUser}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              open={Boolean(anchorElUser)}
+              onClose={handleCloseUserMenu}
+            >
+              {settingsLinks.map((link) => (
+                <MenuItem key={link.name} onClick={handleCloseUserMenu}>
+                  <NavLink
+                    to={link.path}
+                    style={({ isActive }) => ({
+                      color: isActive ? '#000' : 'rgba(0, 0, 0, 0.87)',
+                      textDecoration: 'none',
+                      display: 'block',
+                    })}
+                  >
+                    {link.name}
+                  </NavLink>
+                </MenuItem>
+              ))}
+            </Menu>
+          </Box>
+        </Toolbar>
+      </Container>
+    </AppBar>
+  );
+};
+
+# components/layout/layout/Layout.css
+.Layout {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    grid-template-rows: 1fr 3fr 3fr 1fr;
+    height: 100%;
+}
+
+.Layout > header {
+    grid-column: 1 / span 2;
+    grid-row: 1;
+}
+
+.Layout > footer {
+    grid-column: 1 / span 2;
+    grid-row: 4;
+}
+
+.Layout > aside:nth-child(1) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.Layout > aside:nth-child(2) {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+.Layout > main {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+}
+
+.Layout > * {
+    border: 1px dashed lightcoral;
+}
+
+# components/layout/layout/Layout.tsx
+import Folowers from '../folowers/Folowers';
+import Followings from '../following/Following';
+import Footer from '../footer/Footer';
+import Header from '../header/Header';
+import Routing from '../routing/Routing';
+import './Layout.css';
+import { Navigate } from 'react-router-dom';
+
+// Utility function to check if the user is authenticated
+const isAuthenticated = (): boolean => {
+    // Look for the presence of the 'auth' cookie
+    return document.cookie.split('; ').some((cookie) => cookie.startsWith('auth='));
+};
+
+export default function Layout() {
+    // Redirect to /login if the user is not authenticated
+    if (!isAuthenticated()) {
+        return <Navigate to="/login" />;
+    }
+
+    return (
+        <div className="Layout">
+            <header>
+                <Header />
+            </header>
+            <aside>
+                <Followings />
+            </aside>
+            <aside>
+                <Folowers />
+            </aside>
+            <main>
+                <Routing />
+            </main>
+            <footer>
+                <Footer />
+            </footer>
+        </div>
+    );
+}
+
+# components/layout/login/login.tsx
+import React from "react";
+import {
+  Box,
+  Button,
+  Container,
+  TextField,
+  Typography,
+  CssBaseline,
+  Grid,
+} from "@mui/material";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
+
+const theme = createTheme();
+
+export default function LoginPage() {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const username = data.get("username");
+    const password = data.get("password");
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        console.log("Login successful:", result);
+        document.cookie = `auth=${result.jwt}; path=/; secure; SameSite=Strict`;
+        navigate("/");
+      } else {
+        console.error("Login failed:", result);
+      }
+    } catch (error) {
+      console.error("An error occurred:", error);
+    }
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Container component="main" maxWidth="xs">
+        <CssBaseline />
+        <Box
+          sx={{
+            marginTop: 8,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <Typography component="h1" variant="h5">
+            Sign in
+          </Typography>
+          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="username"
+              label="Username"
+              name="username"
+              autoComplete="username"
+              autoFocus
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+            >
+              Sign In
+            </Button>
+            <Grid container>
+              <Grid item xs>
+                <Button href="#" variant="text">
+                  Forgot password?
+                </Button>
+              </Grid>
+              <Grid item>
+                <Button href="#" variant="text">
+                  {"Don't have an account? Sign Up"}
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </Box>
+      </Container>
+    </ThemeProvider>
+  );
+}
+
+# components/layout/logout/logout.tsx
+import React, { useEffect } from 'react';
+import { Container, Typography, Box, Button } from '@mui/material';
+import Cookies from 'js-cookie';
+
+const LogoutPage = () => {
+    useEffect(() => {
+        // Delete the 'auth' cookie
+        Cookies.remove('auth');
+
+        // Redirect to the home page after a delay (optional)
+        const timer = setTimeout(() => {
+            window.location.href = '/';
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    return (
+        <Container
+            maxWidth={false}
+            disableGutters
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#f5f5f5',
+                zIndex: 9999,
+                textAlign: 'center',
+            }}
+        >
+            <Box
+                sx={{
+                    padding: 4,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    backgroundColor: 'white',
+                }}
+            >
+                <Typography variant="h4" gutterBottom>
+                    Thank You!
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                    Thanks for using our social media software. We hope to see you again soon!
+                </Typography>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => { window.location.href = '/'; }}
+                    sx={{ mt: 2 }}
+                >
+                    Go to Homepage
+                </Button>
+            </Box>
+        </Container>
+    );
+};
+
+export default LogoutPage;
+
+# components/layout/not-found/NotFound.css
+
+# components/layout/not-found/NotFound.tsx
+import './NotFound.css'
+
+export default function NotFound(): JSX.Element {
+    return (
+        <div className='NotFound'>
+            <h1>404</h1>
+            <p>Page not found</p>
+            <p>Noop is an afghan hound</p>
+        </div>
+    )
+}
+# components/layout/routing/Routing.tsx
+import { Routes, Route, Navigate } from "react-router-dom";
+import Profile from "../../posts/profile/Profile";
+import Feed from "../../posts/feed/Feed";
+import NotFound from "../not-found/NotFound";
+import LoginPage from "../login/login";
+import LogoutPage from "../logout/logout";
+import EditPost from "../editPost/EditPost";
+
+// Utility function to check if the user is authenticated
+const isAuthenticated = (): boolean => {
+    // Look for the presence of the 'auth' cookie
+    return document.cookie.split('; ').some((cookie) => cookie.startsWith('auth='));
+};
+
+export default function Routing(): JSX.Element {
+    return (
+        <Routes>
+            {/* Protected routes */}
+            <Route
+                path="/profile"
+                element={isAuthenticated() ? <Profile /> : <Navigate to="/login" />}
+            />
+            <Route
+                path="/feed"
+                element={isAuthenticated() ? <Feed /> : <Navigate to="/login" />}
+            />
+            <Route path="/edit"  element={isAuthenticated() ? <EditPost /> : <Navigate to="/login" />} />
+            {/* log out page */}
+            <Route path="/logout" element={<LogoutPage />} />
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+            
+            {/* Catch-all for undefined routes */}
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
+}
+
+# components/posts/feed/Feed.css
+
+# components/posts/feed/Feed.tsx
+import { useEffect, useState } from 'react'
+import { Container, Grid, Card, CardContent, Typography } from '@mui/material'
+import PostModel from '../../../models/posts/Post'
+import feed from '../../../services/Feed'
+import './Feed.css'
+export default function Feed() {
+    const [posts, setPosts] = useState<PostModel[]>([])
+
+    useEffect(() => {
+        feed.getFeed()
+            .then(setPosts)
+            .catch(alert)
+    }, [])
+
+    return (<div className='feed-container'>
+        <Container maxWidth="md" style={{ marginTop: '20px' }}>
+            <Grid container spacing={3}>
+                {posts.map(({ id, title }) => (
+                    <Grid item xs={12} sm={6} md={4} key={id}>
+                        <Card>
+                            <CardContent>
+                                <Typography variant="h6" component="div">
+                                    {title}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                ))}
+            </Grid>
+        </Container>
+        </div>
+    )
+}
+
+# components/posts/new/NewForm.css
+
+# components/posts/new/NewPost.tsx
+import React, { useState } from 'react';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import PostDraft from '../../../models/posts/PostDraft';
+import InsertPost from '../../../services/InsertPost';
+
+interface NewPostProps {
+  onAddPost: (newPost: PostDraft) => void;
+}
+
+export default function NewPost({ onAddPost }: NewPostProps) {
+  const { register, handleSubmit, reset } = useForm<PostDraft>();
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit: SubmitHandler<PostDraft> = async (data) => {
+    setLoading(true);
+    try {
+      const newPost = await InsertPost(data);
+      onAddPost(newPost);
+      reset();
+    } catch (error) {
+      console.error('Failed to create post', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="bg-white rounded-lg shadow-md p-6 space-y-4"
+    >
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Title</label>
+        <input
+          type="text"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          {...register('title', { required: 'Title is required' })}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Body</label>
+        <textarea
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          {...register('body', { required: 'Body is required' })}
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className={`w-full py-2 px-4 rounded-md text-white ${
+          loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+        }`}
+      >
+        {loading ? 'Submitting...' : 'Submit'}
+      </button>
+    </form>
+  );
+}
+
+# components/posts/post/Post.css
+.posts-inner-container {
+    transition: opacity 2.5s ease-in-out;
+    opacity: 1;
+  }
+  
+  .posts-inner-container.fade-out {
+    opacity: 0;
+    pointer-events: none; /* Optional: Prevent interactions during fade-out */
+  }
+  
+# components/posts/post/Post.tsx
+
+
+// Post.tsx
+import CommentDraft from '../../../models/comment/CommentDraft';
+import PostModel from '../../../models/posts/Post';
+import InsertComment from '../../../services/addComment';
+import updatePost from '../../../services/updatePost';
+import './Post.css';
+import PostsUi from './PostUi';
+
+interface PostProps {
+    post: PostModel;
+    onDelete: (postId: string) => Promise<boolean>;
+    onUpdatePost: (postId: string) => Promise<void>;
+    setPosts: React.Dispatch<React.SetStateAction<PostModel[]>>; // Accept setPosts as a prop
+}
+
+export default function Post(props: PostProps): JSX.Element {
+    const { post, onDelete, onUpdatePost, setPosts } = props;
+
+    const handleAddComment = async (postId: string, comment: string): Promise<void> => {
+        const commentData: CommentDraft = { postId, body: comment };
+        try {
+            const response = await InsertComment(commentData);
+            console.log(`Comment added to post with id ${postId}:`, response);
+
+            // Update the local post state with the new comment
+            setPosts((prevPosts) =>
+                prevPosts.map((p) =>
+                    p.id === postId
+                        ? { ...p, comments: [...p.comments, response] }
+                        : p
+                )
+            );
+        } catch (e) {
+            console.error(`Failed to add comment to post with id ${postId}:`, e);
+        }
+    };
+
+    return (
+<PostsUi
+  post={post}
+  onDelete={onDelete}
+  onAddComment={handleAddComment}
+  onSavePost={async (updatedPost) => {
+    try {
+      await updatePost(post.id, updatedPost); // Replace with your updatePost logic
+      setPosts((prevPosts) =>
+        prevPosts.map((p) => (p.id === post.id ? { ...p, ...updatedPost } : p))
+      );
+    } catch (error) {
+      console.error("Error updating post:", error);
+    }
+  }}
+/>
+
+    );
+}
+
+# components/posts/post/PostsUi.css
+.post-card {
+    margin: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .post-header {
+    display: flex;
+    align-items: center;
+  }
+  
+  .profile-pic {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .post-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .post-body {
+    margin-top: 16px;
+  }
+  
+  .comment-item {
+    margin-bottom: 12px;
+  }
+  
+  .submit-comment {
+    margin-top: 16px;
+  }
+  
+# components/posts/post/PostUi.tsx
+import React, { useState } from "react";
+import {
+  Typography,
+  Card,
+  CardContent,
+  IconButton,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Button,
+  Box,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import CommentIcon from "@mui/icons-material/Comment";
+import { Editor } from "@tinymce/tinymce-react";
+import { useNavigate } from "react-router-dom";
+import PostModel from "../../../models/posts/Post";
+import './PostsUi.css';
+
+interface PostsUiProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<boolean>;
+  onAddComment: (postId: string, comment: string) => Promise<void>;
+  onSavePost: (post: { title: string; body: string }) => Promise<void>;
+}
+
+export default function PostsUi(props: PostsUiProps): JSX.Element {
+  const { post, onDelete, onAddComment, onSavePost } = props;
+  const { title, body, createdAt, id, comments = [] } = post;
+  const userName = post.user?.name ?? "Anonymous";
+
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openCommentsModal, setOpenCommentsModal] = useState(false);
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [newPostBody, setNewPostBody] = useState(body || "");
+  const [newPostTitle, setNewPostTitle] = useState(title || "");
+  const [newComment, setNewComment] = useState("");
+
+  const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    const isDeleted = await onDelete(id);
+    if (isDeleted) {
+      setOpenDeleteDialog(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (newComment.trim()) {
+      await onAddComment(id, newComment);
+      setNewComment("");
+    }
+  };
+
+  const handleSavePost = async () => {
+    if (newPostTitle.trim() && newPostBody.trim()) {
+      await onSavePost({ title: newPostTitle, body: newPostBody });
+      setIsEditingPost(false);
+    }
+  };
+
+  return (
+    <Card className="post-card">
+      {/* Toolbar with Icons */}
+      <Box className="toolbar">
+        <Typography variant="subtitle1" className="post-header">
+          <img
+            src={`https://cdn.ozari.co.il/beery/noop.jpeg`}
+            alt={`${userName}'s profile`}
+            className="profile-pic"
+          />
+          {userName} at {new Date(createdAt).toLocaleString()}
+        </Typography>
+
+        <Box>
+          <IconButton
+            aria-label="comments"
+            color="primary"
+            onClick={() => setOpenCommentsModal(true)}
+          >
+            <CommentIcon />
+          </IconButton>
+
+          <IconButton
+            aria-label="edit"
+            color="primary"
+            onClick={() => setIsEditingPost(true)}
+          >
+            <EditIcon />
+          </IconButton>
+
+          <IconButton
+            aria-label="delete"
+            color="error"
+            onClick={() => setOpenDeleteDialog(true)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      </Box>
+
+      <CardContent>
+        {isEditingPost ? (
+          <>
+            <input
+              type="text"
+              value={newPostTitle}
+              onChange={(e) => setNewPostTitle(e.target.value)}
+              placeholder="Post Title"
+              className="post-title-input"
+            />
+            <Editor
+              apiKey={import.meta.env.VITE_TINYMCE_KEY}
+              value={newPostBody}
+              init={{
+                height: 300,
+                menubar: false,
+                plugins: ["lists", "link", "emoticons"],
+                toolbar:
+                  "undo redo | bold italic | bullist numlist outdent indent | emoticons",
+              }}
+              onEditorChange={(content) => setNewPostBody(content)}
+            />
+            <Box className="post-edit-actions">
+              <Button
+                onClick={handleSavePost}
+                variant="contained"
+                color="primary"
+              >
+                Save
+              </Button>
+              <Button
+                onClick={() => setIsEditingPost(false)}
+                variant="outlined"
+                color="secondary"
+              >
+                Cancel
+              </Button>
+            </Box>
+          </>
+        ) : (
+          <>
+            <Typography variant="h5" className="post-title" gutterBottom>
+              {title}
+            </Typography>
+            <Typography
+              variant="body1"
+              className="post-body"
+              dangerouslySetInnerHTML={{ __html: body }}
+            />
+          </>
+        )}
+      </CardContent>
+
+      {/* Comments Modal */}
+      <Dialog
+        open={openCommentsModal}
+        onClose={() => setOpenCommentsModal(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Comments</DialogTitle>
+        <DialogContent>
+          {comments?.map((comment) => (
+            <div key={comment.id} className="comment-item">
+              <Typography variant="body2" color="text.primary">
+                <strong>{comment.user?.name ?? "Anonymous"}</strong>:
+                <span dangerouslySetInnerHTML={{ __html: comment.body }} />
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {new Date(comment.createdAt).toLocaleString()}
+              </Typography>
+            </div>
+          ))}
+
+          {/* TinyMCE Editor */}
+          <Editor
+            apiKey={import.meta.env.VITE_TINYMCE_KEY}
+            value={newComment}
+            init={{
+              height: 200,
+              menubar: false,
+              plugins: ["lists", "link", "emoticons"],
+              toolbar:
+                "undo redo | bold italic | bullist numlist outdent indent | emoticons",
+            }}
+            onEditorChange={(content) => setNewComment(content)}
+          />
+
+          <Button
+            onClick={handleAddComment}
+            variant="contained"
+            color="primary"
+            className="submit-comment"
+          >
+            Submit Comment
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this post? This action cannot be
+          undone.
+        </DialogContent>
+        <Button
+          onClick={() => setOpenDeleteDialog(false)}
+          variant="outlined"
+          color="primary"
+        >
+          Cancel
+        </Button>
+        <Button onClick={handleDelete} variant="contained" color="error">
+          Delete
+        </Button>
+      </Dialog>
+    </Card>
+  );
+}
+
+# components/posts/profile/Profile.css
+.posts-container {
+    max-height: 570px ;
+    overflow-y: auto;
+    padding: 16px;
+    scrollbar-width: thin;
+}
+
+.posts-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.posts-container::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 3px;
+}
+# components/posts/profile/Profile.tsx
+import { useEffect, useState } from 'react';
+import Post from '../post/Post';
+import NewPost from '../new/NewPost';
+import profileService from '../../../services/Profile';
+import PostModel from '../../../models/posts/Post';
+
+export default function Profile() {
+  const [posts, setPosts] = useState<PostModel[]>([]);
+
+  useEffect(() => {
+    profileService.getProfile().then(setPosts).catch(console.error);
+  }, []);
+
+  const handleAddPost = (newPost: PostModel) => {
+    setPosts((prev) => [newPost, ...prev]);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-4xl mx-auto">
+        <NewPost onAddPost={handleAddPost} />
+        <div className="mt-6 grid gap-4">
+          {posts.map((post) => (
+            <Post key={post.id} post={post} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+# index.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+# input.css
+
+# main.tsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './output.css'
+import App from './components/app/App.tsx'
+import * as Sentry from "@sentry/react";
+
+
+
+Sentry.init({
+  dsn: "https://106544dd7f0888e8cf6de5f307cd654f@o4508091701592065.ingest.us.sentry.io/4508629353234432",
+  integrations: [
+    Sentry.browserTracingIntegration(),
+  ],
+  // Tracing
+  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+  tracePropagationTargets: ["localhost", /^https:\/\/jb\.noop\.co\.il/],
+});
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+# models/comment/CommentDraft.ts
+export default interface CommentDraft {
+    postId: string;
+    body: string;
+}
+# models/comment/Comments.ts
+import User from "../users/Users";
+import CommentDraft from "./CommentDraft";
+export default interface Comment extends CommentDraft {
+    id: string;
+    userId: string;
+    createdAt: string;
+    updatedAt: string;
+    user: User;
+}
+
+# models/posts/Post.ts
+import Comment from "../comment/Comments";
+import User from "../users/Users";
+import PostDraft from "./PostDraft";
+export default interface Post extends PostDraft {
+    id: string;
+    userId: string;
+
+    imageUrl: string;
+    createdAt: string;
+    updatedAt: string;
+    comments: Comment[];
+    user: User;
+}
+# models/posts/PostDraft.ts
+export default interface PostDraft {
+    title: string;
+    body: string;
+}
+# models/userFollower/UserFollower.ts
+ export default interface userFollower {
+    id:string;
+    name:string
+    username:string;
+    password:string;
+    created_at:string;
+    updated_at:string;
+
+ }
+# models/users/Users.ts
+export default interface User {
+    id: string;
+    name: string;
+    username: string;
+    password: string;
+    createdAt: string;
+    updatedAt: string;
+}
+# services/addComment.ts
+import axios from "axios";
+import CommentDraft from "../models/comment/CommentDraft";
+import Comment from "../models/comment/Comments";
+
+
+export default async function InsertComment(commentData:CommentDraft):Promise<Comment> {
+  const jsonData = {"body" : commentData.body};
+  const response = await axios.post(
+    `${import.meta.env.VITE_REST_SERVER_URL}/comments/${commentData.postId}`,
+    jsonData,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log(`Comment added to post with id ${commentData.postId}: ${commentData.body}`);
+  console.log(jsonData);
+  console.log(response);
+  return response.data as Comment;
+}
+
+# services/Feed.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+
+class Feed {
+    async getFeed(): Promise<Post[]> {
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/posts`);
+        return response.data;
+    }
+}
+
+const feed = new Feed();
+console.log(feed);
+export default feed;
+# services/FollowersService.ts
+import axios from "axios";
+// import userFollower from "../models/userFollower/UserFollower";
+import User from "../models/users/Users";
+
+class FollowerService {
+    async getFollowers(): Promise<User[]> {
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
+        console.log(response.data);
+        return response.data;
+    }
+
+    async followUser(id:string) {
+        const response = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/follow/${id}`);
+        console.log(`User with id ${id} followed`);
+        return response.data;
+    }
+
+    async unfollowUser(id:string) {
+        const response = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/unfollow/${id}`);
+        console.log(`User with id ${id} unfollowed`);
+        return response.data;
+    }
+
+
+    async getFollowing(): Promise<User[]> {
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
+        console.log(response.data);
+        return response.data;
+    }
+}
+
+const followerService = new FollowerService();
+console.log(followerService);
+export default followerService;
+# services/Following.ts
+import axios from "axios";
+// import Post from "../models/posts/Post";
+import User from "../models/users/Users";
+
+class Following {
+    async getFollowing(): Promise<User[]> {
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
+        return response.data;
+    }
+}
+
+const following = new Following();
+console.log(following);
+export default following;
+# services/FollowingService.ts
+import axios from "axios";
+// import userFollower from "../models/userFollower/UserFollower";
+import User from "../models/users/Users";
+
+class FollowingService {
+    async getFollowers(): Promise<User[]> {
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
+        return response.data;
+    }
+}
+
+const followingService = new FollowingService();
+console.log(followingService);
+export default followingService;
+# services/GetSinglePost.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+// import PostDraft from "../models/posts/PostDraft";
+
+class GetSinglePost {
+    async getSinglePost(id:string): Promise<Post[]> {
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/posts/${id}`);
+        return response.data;
+    }
+
+}
+
+const getSinglePost = new GetSinglePost();
+console.log(getSinglePost);
+export default getSinglePost;
+# services/InsertPost.ts
+import axios from "axios";
+import PostDraft from "../models/posts/PostDraft";
+import PostModel from '../models/posts/Post';
+
+export default async function InsertPost(post: PostDraft):Promise<PostModel> {
+  const jsonData = JSON.stringify(post);
+  const response = await axios.post(
+    `${import.meta.env.VITE_REST_SERVER_URL}/posts`,
+    jsonData,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log(response);
+  return response.data as PostModel;
+}
+
+# services/Profile.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+
+class Profile {
+    async getProfile(): Promise<Post[]> {
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/posts`);
+        return response.data;
+    }
+
+    async removePost(id: string): Promise<boolean> {
+        const response = await axios.delete(`${import.meta.env.VITE_REST_SERVER_URL}/posts/${id}`);
+        return response.data;
+    }
+}
+
+const profile = new Profile();
+console.log(profile);
+export default profile;
+# services/updatePost.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+import PostDraft from "../models/posts/PostDraft";
+
+export default async function updatePost(id: string, post: PostDraft): Promise<Post> {
+// now we will make that post .title and .body will be into a json object
+console.log("Post:", post);
+const jsonData = JSON.stringify(post);
+  const response = await axios.patch(
+    `${import.meta.env.VITE_REST_SERVER_URL}/posts/${id}`,
+    jsonData,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log("Response from updatePost:", response);
+  return response.data
+}
+
+# vite-env.d.ts
+/// <reference types="vite/client" />
+

@@ -29,9 +29,9 @@ export default function Followings(): JSX.Element {
   }, []);
 
   return (
-    <div className="Following">
-      <h1>Following List</h1>
-      <FollowingUi following={following} onUpdate={fetchFollowing} />
-    </div>
+<div className="h-full">
+  <h1 className="text-lg font-semibold mb-4">Following List</h1>
+  <FollowingUi following={following} onUpdate={fetchFollowing} />
+</div>
   );
 }

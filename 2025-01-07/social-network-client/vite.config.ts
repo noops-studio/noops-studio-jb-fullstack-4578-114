@@ -8,7 +8,9 @@ export default defineConfig({
     org: "ozari-holdings-ltd",
     project: "javascript-react"
   })],
-
+  css: {
+    postcss: './postcss.config.cjs', // Or .js if you chose Option 2
+  },
   build: {
     sourcemap: true
   }

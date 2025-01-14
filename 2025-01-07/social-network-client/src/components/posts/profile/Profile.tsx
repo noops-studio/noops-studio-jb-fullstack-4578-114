@@ -1,71 +1,34 @@
-// Profile.tsx
 import { useEffect, useState } from 'react';
-import './Profile.css';
-import PostModel from '../../../models/posts/Post';
-import profile from '../../../services/Profile';
 import Post from '../post/Post';
 import NewPost from '../new/NewPost';
-import getSinglePost from '../../../services/GetSinglePost';
+import profileService from '../../../services/Profile';
+import PostModel from '../../../models/posts/Post';
+import useTitle from '../../../hooks/useTitle';
 
-export default function Profile(): JSX.Element {
-    const [posts, setPosts] = useState<PostModel[]>([]);
+export default function Profile() {
+  const [posts, setPosts] = useState<PostModel[]>([]);
 
-    useEffect(() => {
-        loadPosts();
-    }, []);
 
-    const loadPosts = async () => {
-        try {
-            const data = await profile.getProfile();
-            console.log('Fetched posts:', data);
-            setPosts(data || []);
-        } catch (error) {
-            console.error('Error fetching profile:', error);
-            alert('Failed to fetch posts');
-        }
-    };
+  useTitle('Profile');
 
-    const handleAddPost = (newPost: PostModel) => {
-        setPosts((prevPosts) => [newPost, ...prevPosts]);
-    };
+  useEffect(() => {
+    profileService.getProfile().then(setPosts).catch(console.error);
+  }, []);
 
-    const handleUpdatePost = async (postId: string) => {
-        try {
-            const postData = await getSinglePost.getSinglePost(postId);
-            const updatedPost = postData[0];
+  const handleAddPost = (newPost: PostModel) => {
+    setPosts((prev) => [newPost, ...prev]);
+  };
 
-            setPosts((prevPosts) =>
-                prevPosts.map((post) =>
-                    post.id === postId ? updatedPost : post
-                )
-            );
-        } catch (error) {
-            console.error(`Error fetching updated post with id ${postId}:`, error);
-        }
-    };
-
-    const handleDeletePost = async (postId: string): Promise<boolean> => {
-        try {
-            setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
-            return true;
-        } catch (error) {
-            console.error('Error deleting post:', error);
-            return false;
-        }
-    };
-
-    return (
-        <div className="posts-container">
-            <NewPost onAddPost={handleAddPost} />
-            {posts.map((post) => (
-                <Post
-                    key={post.id}
-                    post={post}
-                    onUpdatePost={handleUpdatePost}
-                    onDelete={handleDeletePost}
-                    setPosts={setPosts} // Pass setPosts to Post component
-                />
-            ))}
+  return (
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-4xl mx-auto">
+        <NewPost onAddPost={handleAddPost} />
+        <div className="mt-6 grid gap-4">
+          {posts.map((post) => (
+            <Post key={post.id} post={post} />
+          ))}
         </div>
-    );
+      </div>
+    </div>
+  );
 }

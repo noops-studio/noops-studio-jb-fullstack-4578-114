@@ -1,150 +1,58 @@
-import React, { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
-import {
-  TextField,
-  Button,
-  Container,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Typography,
-  CircularProgress,
-  Box,
-} from "@mui/material";
-import { Editor } from "@tinymce/tinymce-react";
-import PostDraft from "../../../models/posts/PostDraft";
-import InsertPost from "../../../services/InsertPost";
-import PostModel from "../../../models/posts/Post";
+import React, { useState } from 'react';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import PostDraft from '../../../models/posts/PostDraft';
+import InsertPost from '../../../services/InsertPost';
 
 interface NewPostProps {
-  onAddPost: (newPost: PostModel) => void;
+  onAddPost: (newPost: PostDraft) => void;
 }
 
-export default function NewPost({ onAddPost }: NewPostProps): JSX.Element {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<PostDraft>();
-  const [openModal, setOpenModal] = useState(false);
-  const [formData, setFormData] = useState<PostDraft | null>(null);
+export default function NewPost({ onAddPost }: NewPostProps) {
+  const { register, handleSubmit, reset } = useForm<PostDraft>();
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [bodyContent, setBodyContent] = useState("");
 
-  const onSubmit: SubmitHandler<PostDraft> = (data) => {
-    setFormData({ ...data, body: bodyContent });
-    setOpenModal(true);
-  };
-
-  const handleConfirm = async () => {
-    if (formData) {
-      setOpenModal(false);
-      setLoading(true);
-      try {
-        const newPost = await InsertPost(formData);
-        if (newPost && newPost.id) {
-          onAddPost(newPost);
-          setSuccessMessage("Success! Data inserted fully.");
-          reset();
-          setBodyContent(""); // Clear TinyMCE editor content
-        }
-      } catch (error) {
-        console.error("Error in InsertPost:", error);
-      } finally {
-        setLoading(false);
-      }
+  const onSubmit: SubmitHandler<PostDraft> = async (data) => {
+    setLoading(true);
+    try {
+      const newPost = await InsertPost(data);
+      onAddPost(newPost);
+      reset();
+    } catch (error) {
+      console.error('Failed to create post', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    setOpenModal(false);
-  };
-
   return (
-    <Container>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <TextField
-          label="Title"
-          variant="outlined"
-          fullWidth
-          margin="normal"
-          error={!!errors.title}
-          helperText={errors.title?.message}
-          {...register("title", {
-            required: "Title is required",
-            minLength: {
-              value: 10,
-              message: "Title must be at least 10 characters long",
-            },
-          })}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="bg-white rounded-lg shadow-md p-6 space-y-4"
+    >
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Title</label>
+        <input
+          type="text"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          {...register('title', { required: 'Title is required' })}
         />
-        <Typography variant="subtitle1" gutterBottom>
-          Post Body:
-        </Typography>
-        <Editor
-          apiKey={import.meta.env.VITE_TINYMCE_KEY}
-          value={bodyContent}
-          init={{
-            height: 300,
-            menubar: false,
-            plugins: ["lists", "link", "emoticons"],
-            toolbar:
-              "undo redo | bold italic | bullist numlist outdent indent | emoticons",
-          }}
-          onEditorChange={(content) => setBodyContent(content)}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Body</label>
+        <textarea
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          {...register('body', { required: 'Body is required' })}
         />
-        {errors.body && (
-          <Typography color="error">{errors.body.message}</Typography>
-        )}
-        <Button type="submit" variant="contained" color="primary">
-          Add Post
-        </Button>
-      </form>
-
-      <Dialog open={openModal} onClose={handleCancel}>
-        <DialogTitle>Confirm Submission</DialogTitle>
-        <DialogContent>
-          <Typography>
-            <strong>Title:</strong> {formData?.title}
-          </Typography>
-          <Typography>
-            <strong>Body:</strong>
-          </Typography>
-          <div dangerouslySetInnerHTML={{ __html: bodyContent }} />
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={handleCancel} color="secondary">
-            Cancel
-          </Button>
-          <Button onClick={handleConfirm} color="primary">
-            Yes, Submit
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={loading}>
-        <DialogContent>
-          <Box
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            flexDirection="column"
-          >
-            <CircularProgress />
-            <Typography>Submitting...</Typography>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-      {successMessage && (
-        <Box mt={2}>
-          <Typography color="success.main">{successMessage}</Typography>
-        </Box>
-      )}
-    </Container>
+      </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className={`w-full py-2 px-4 rounded-md text-white ${
+          loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+        }`}
+      >
+        {loading ? 'Submitting...' : 'Submit'}
+      </button>
+    </form>
   );
 }
