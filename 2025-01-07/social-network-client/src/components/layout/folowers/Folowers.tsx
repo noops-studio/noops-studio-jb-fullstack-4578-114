@@ -12,6 +12,7 @@ const [follower,setFolowers] = useState<User[]>([])
 useEffect(()=>{
   followerService.getFollowers().then(setFolowers).catch(alert)
 },[])
+console.log(follower)
 // now we will map the follower to get the names as a array of names
 const followerNames = follower.map(({name}) => name)
   return (

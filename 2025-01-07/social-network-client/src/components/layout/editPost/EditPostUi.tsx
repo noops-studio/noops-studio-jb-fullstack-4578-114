@@ -50,13 +50,19 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
           <Typography variant="h5" gutterBottom>
             Edit Post
           </Typography>
+
+          {/* Title Input */}
           <TextField
             fullWidth
             label="Title"
             value={postTitle}
             onChange={(e) => setPostTitle(e.target.value)}
             margin="normal"
+            variant="outlined"
+            placeholder="Enter a title for your post"
           />
+
+          {/* Post Body Editor */}
           <Editor
             apiKey={import.meta.env.VITE_TINYMCE_KEY}
             value={postBody}
@@ -69,6 +75,8 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
             }}
             onEditorChange={(content) => setPostBody(content)}
           />
+
+          {/* Action Buttons */}
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
             <Button variant="outlined" onClick={handleCloseModal}>
               Cancel
