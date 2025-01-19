@@ -23,7 +23,7 @@ class FollowerService {
 
 
     async getFollowing(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
         console.log(`Following: ${response.data}`);
         return response.data;
     }
