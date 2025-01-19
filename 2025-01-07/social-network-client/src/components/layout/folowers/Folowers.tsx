@@ -1,40 +1,49 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import "./Folowers.css";
-import Followers from "./FolowersUi";
+import FollowersUi from "./FolowersUi";
 import followerService from "../../../services/FollowersService";
-import User from "../../../models/users/Users";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { init, unfollow, follow } from "../../../redux/followersSlice";
 
 export default function Folowers(): JSX.Element {
-  const [followers, setFollowers] = useState<
-    { id: string; name: string; isFollowing: boolean }[]
-  >([]);
-
-  const fetchFollowers = async () => {
-    try {
-      const followersData = await followerService.getFollowers();
-      const followingData = await followerService.getFollowing();
-
-      const followingIds = new Set(followingData.map((user) => user.id));
-      setFollowers(
-        followersData.map((user) => ({
-          id: user.id,
-          name: user.name,
-          isFollowing: followingIds.has(user.id),
-        }))
-      );
-    } catch (error) {
-      alert("Failed to fetch followers.");
-    }
-  };
+  const followers = useAppSelector((state) => state.followers.followers || []);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
+    const fetchFollowers = async () => {
+      try {
+        const followersData = await followerService.getFollowers();
+        console.log("Fetched followers:", followersData); // Log the fetched data
+        dispatch(init(followersData));
+      } catch (error) {
+        console.error("Failed to fetch followers:", error);
+      }
+    };
     fetchFollowers();
-  }, []);
+  }, [dispatch]);
+  
+
+  const handleFollowUnfollow = async (userId: string) => {
+    try {
+      // Optimistically update Redux store
+      dispatch(unfollow(userId));
+  
+      // Make API call
+      await followerService.unfollowUser(userId);
+    } catch (error) {
+      console.error("Failed to unfollow user:", error);
+  
+      // Rollback in case of failure
+      dispatch(follow({ id: userId, name: "Unknown", isFollowing: true }));
+    }
+  };
+  
+  
 
   return (
-<div className="h-full">
-  <h1 className="text-lg font-semibold mb-4">Followers List</h1>
-  <Followers followers={followers} onUpdate={fetchFollowers} />
-</div>
+    <div className="h-full">
+      <h1 className="text-lg font-semibold mb-4">Followers List</h1>
+      <FollowersUi followers={followers} onFollowUnfollow={handleFollowUnfollow} />
+    </div>
   );
 }

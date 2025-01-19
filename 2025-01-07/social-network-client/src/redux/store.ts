@@ -1,14 +1,17 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { followingSlice } from "./followingSlice";
+import followingSlice from "./followingSlice";
+import followersSlice from "./followersSlice";
+import profileSlice from "./profileSlice";
 
 const store = configureStore({
-    reducer: {
-     followingSlice: followingSlice.reducer
-    }
+  reducer: {
+    following: followingSlice,
+    followers: followersSlice,
+    profile: profileSlice, // Add the profile slice here
+  },
 });
 
 export default store;
-// The RootState type is used to infer the type of the useSelector hook in the components.
+
 export type RootState = ReturnType<typeof store.getState>;
-// The AppDispatch type is used to infer the type of the useDispatch hook in the components.
 export type AppDispatch = typeof store.dispatch;

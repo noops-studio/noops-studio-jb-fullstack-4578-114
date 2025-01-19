@@ -1,37 +1,42 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import "./Following.css";
 import FollowingUi from "./FollowingUi";
 import followerService from "../../../services/FollowersService";
-import User from "../../../models/users/Users";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { init, unfollow } from "../../../redux/followingSlice";
 
 export default function Followings(): JSX.Element {
-  const [following, setFollowing] = useState<
-    { id: string; name: string; isFollowing: boolean }[]
-  >([]);
+  const following = useAppSelector((state) => state.following.following);
+  const dispatch = useAppDispatch();
 
-  const fetchFollowing = async () => {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const followingData = await followerService.getFollowing();
+        dispatch(init(followingData));
+      } catch (error) {
+        console.error("Failed to fetch following list:", error);
+      }
+    };
+    fetchData();
+  }, [dispatch]);
+
+  const handleUnfollow = async (userId: string) => {
     try {
-      const followingData = await followerService.getFollowing();
-      setFollowing(
-        followingData.map((user) => ({
-          id: user.id,
-          name: user.name,
-          isFollowing: true, // Since these are in the following list, they are all being followed
-        }))
-      );
+      await followerService.unfollowUser(userId);
+      dispatch(unfollow(userId)); // Update Redux store
     } catch (error) {
-      alert("Failed to fetch following list.");
+      console.error("Failed to unfollow user:", error);
     }
   };
 
-  useEffect(() => {
-    fetchFollowing();
-  }, []);
-
   return (
-<div className="h-full">
-  <h1 className="text-lg font-semibold mb-4">Following List</h1>
-  <FollowingUi following={following} onUpdate={fetchFollowing} />
-</div>
+    <div className="h-full">
+      <h1 className="text-lg font-semibold mb-4">Following List</h1>
+      <FollowingUi
+        following={following}
+        onUnfollow={handleUnfollow} // Pass handler to UI
+      />
+    </div>
   );
 }

@@ -4,24 +4,25 @@
     height: 100%;
 }
 # components/app/App.tsx
-import { BrowserRouter,Route, Routes } from 'react-router-dom'
-import Layout from '../layout/layout/Layout'
-import './App.css'
-import LoginPage from '../layout/login/login'
+// components/app/App.tsx
+import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+import Routing from "../layout/routing/Routing";
+import store from "../../redux/store";
+import "./App.css";
 
 export default function App(): JSX.Element {
-    return (
-        <div className="App">
-            <BrowserRouter>
-            <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="*" element={<Layout />} />
-            </Routes>
-            </BrowserRouter>
-            
-        </div>
-    )
+  return (
+    <div className="App">
+      <Provider store={store}>
+        <BrowserRouter>
+          <Routing />
+        </BrowserRouter>
+      </Provider>
+    </div>
+  );
 }
+
 # components/common/Loading.tsx
 import React, { useState } from 'react';
 
@@ -72,6 +73,23 @@ export default function Loading({ isLoading, error, onRetry }: LoadingProps) {
       )}
     </>
   );
+}
+
+# components/common/ProtectedRoute.tsx
+// components/common/ProtectedRoute.tsx
+import { Navigate } from "react-router-dom";
+
+interface ProtectedRouteProps {
+  element: JSX.Element;
+}
+
+export default function ProtectedRoute({ element }: ProtectedRouteProps): JSX.Element {
+  const isAuthenticated = (): boolean => {
+    // Check for 'auth' cookie or token logic
+    return document.cookie.split("; ").some((cookie) => cookie.startsWith("auth="));
+  };
+
+  return isAuthenticated() ? element : <Navigate to="/login" replace />;
 }
 
 # components/common/setTitle.ts
@@ -311,85 +329,79 @@ export default FollowButton;
 # components/layout/following/Following.css
 
 # components/layout/following/Following.tsx
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import "./Following.css";
 import FollowingUi from "./FollowingUi";
 import followerService from "../../../services/FollowersService";
-import User from "../../../models/users/Users";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { init, unfollow } from "../../../redux/followingSlice";
 
 export default function Followings(): JSX.Element {
-  const [following, setFollowing] = useState<
-    { id: string; name: string; isFollowing: boolean }[]
-  >([]);
+  const following = useAppSelector((state) => state.following.following);
+  const dispatch = useAppDispatch();
 
-  const fetchFollowing = async () => {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const followingData = await followerService.getFollowing();
+        dispatch(init(followingData));
+      } catch (error) {
+        console.error("Failed to fetch following list:", error);
+      }
+    };
+    fetchData();
+  }, [dispatch]);
+
+  const handleUnfollow = async (userId: string) => {
     try {
-      const followingData = await followerService.getFollowing();
-      setFollowing(
-        followingData.map((user) => ({
-          id: user.id,
-          name: user.name,
-          isFollowing: true, // Since these are in the following list, they are all being followed
-        }))
-      );
+      await followerService.unfollowUser(userId);
+      dispatch(unfollow(userId)); // Update Redux store
     } catch (error) {
-      alert("Failed to fetch following list.");
+      console.error("Failed to unfollow user:", error);
     }
   };
 
-  useEffect(() => {
-    fetchFollowing();
-  }, []);
-
   return (
-<div className="h-full">
-  <h1 className="text-lg font-semibold mb-4">Following List</h1>
-  <FollowingUi following={following} onUpdate={fetchFollowing} />
-</div>
+    <div className="h-full">
+      <h1 className="text-lg font-semibold mb-4">Following List</h1>
+      <FollowingUi
+        following={following}
+        onUnfollow={handleUnfollow} // Pass handler to UI
+      />
+    </div>
   );
 }
 
 # components/layout/following/FollowingUi.tsx
-// FollowingUi.tsx
 import React from "react";
 
 interface FollowingProps {
   following: { id: string; name: string; isFollowing: boolean }[];
-  onUpdate: () => void; // Callback to refresh the list
+  onUnfollow: (userId: string) => void; // Callback to handle unfollow
 }
 
-const Following: React.FC<FollowingProps> = ({ following, onUpdate }) => {
+const FollowingUi: React.FC<FollowingProps> = ({ following, onUnfollow }) => {
   return (
     <div className="flex flex-col p-4 bg-gray-50 rounded-md shadow-md max-h-80 overflow-y-auto">
-      {following.map(({ id, name, isFollowing }) => (
+      {following.map(({ id, name }) => (
         <div
           key={id}
           className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
         >
-          {/* Avatar */}
           <div className="flex items-center space-x-4">
             <div className="w-10 h-10 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
               {name[0].toUpperCase()}
             </div>
             <span className="text-gray-800 font-medium text-sm">{name}</span>
           </div>
-
-          {/* Unfollow Button */}
           <button
-            onClick={async () => {
-              if (isFollowing) {
-                await followerService.unfollowUser(id);
-                onUpdate();
-              }
-            }}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md
-              bg-red-500 text-white hover:bg-red-600`}
+            onClick={() => onUnfollow(id)}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
           >
             Unfollow
           </button>
         </div>
       ))}
-
       {following.length === 0 && (
         <p className="text-gray-500 text-center">No users being followed.</p>
       )}
@@ -397,104 +409,99 @@ const Following: React.FC<FollowingProps> = ({ following, onUpdate }) => {
   );
 };
 
-export default Following;
+export default FollowingUi;
 
 # components/layout/folowers/Folowers.css
 
 # components/layout/folowers/Folowers.tsx
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import "./Folowers.css";
-import Followers from "./FolowersUi";
+import FollowersUi from "./FolowersUi";
 import followerService from "../../../services/FollowersService";
-import User from "../../../models/users/Users";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { init, unfollow, follow } from "../../../redux/followersSlice";
 
 export default function Folowers(): JSX.Element {
-  const [followers, setFollowers] = useState<
-    { id: string; name: string; isFollowing: boolean }[]
-  >([]);
-
-  const fetchFollowers = async () => {
-    try {
-      const followersData = await followerService.getFollowers();
-      const followingData = await followerService.getFollowing();
-
-      const followingIds = new Set(followingData.map((user) => user.id));
-      setFollowers(
-        followersData.map((user) => ({
-          id: user.id,
-          name: user.name,
-          isFollowing: followingIds.has(user.id),
-        }))
-      );
-    } catch (error) {
-      alert("Failed to fetch followers.");
-    }
-  };
+  const followers = useAppSelector((state) => state.followers.followers || []);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
+    const fetchFollowers = async () => {
+      try {
+        const followersData = await followerService.getFollowers();
+        console.log("Fetched followers:", followersData); // Log the fetched data
+        dispatch(init(followersData));
+      } catch (error) {
+        console.error("Failed to fetch followers:", error);
+      }
+    };
     fetchFollowers();
-  }, []);
+  }, [dispatch]);
+  
+
+  const handleFollowUnfollow = async (userId: string) => {
+    try {
+      // Optimistically update Redux store
+      dispatch(unfollow(userId));
+  
+      // Make API call
+      await followerService.unfollowUser(userId);
+    } catch (error) {
+      console.error("Failed to unfollow user:", error);
+  
+      // Rollback in case of failure
+      dispatch(follow({ id: userId, name: "Unknown", isFollowing: true }));
+    }
+  };
+  
+  
 
   return (
-<div className="h-full">
-  <h1 className="text-lg font-semibold mb-4">Followers List</h1>
-  <Followers followers={followers} onUpdate={fetchFollowers} />
-</div>
+    <div className="h-full">
+      <h1 className="text-lg font-semibold mb-4">Followers List</h1>
+      <FollowersUi followers={followers} onFollowUnfollow={handleFollowUnfollow} />
+    </div>
   );
 }
 
 # components/layout/folowers/FolowersUi.tsx
-// FollowersUi.tsx
-import React from "react";
-import followerService from "../../../services/FollowersService";
-
 interface FollowersProps {
   followers: { id: string; name: string; isFollowing: boolean }[];
-  onUpdate: () => void; // Callback to refresh the list
+  onFollowUnfollow: (userId: string, isFollowing: boolean) => void;
 }
 
-const Followers: React.FC<FollowersProps> = ({ followers, onUpdate }) => {
+const FollowersUi: React.FC<FollowersProps> = ({ followers, onFollowUnfollow }) => {
+  console.log(followers);
   return (
     <div className="flex flex-col p-4 bg-gray-50 rounded-md shadow-md max-h-80 overflow-y-auto">
-      {followers.map(({ id, name, isFollowing }) => (
-        <div
-          key={id}
-          className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
-        >
-          {/* Avatar */}
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-purple-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
-              {name[0].toUpperCase()}
-            </div>
-            <span className="text-gray-800 font-medium text-sm">{name}</span>
-          </div>
-
-          {/* Follow/Unfollow Button */}
-          <button
-            onClick={async () => {
-              if (isFollowing) {
-                await followerService.unfollowUser(id);
-              } else {
-                await followerService.followUser(id);
-              }
-              onUpdate();
-            }}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md
-              ${isFollowing ? "bg-red-500 text-white hover:bg-red-600" : "bg-blue-500 text-white hover:bg-blue-600"}`}
-          >
-            {isFollowing ? "Unfollow" : "Follow"}
-          </button>
-        </div>
-      ))}
-
-      {followers.length === 0 && (
-        <p className="text-gray-500 text-center">No followers to display.</p>
-      )}
+{followers.map(({ id, name, isFollowing }) => (
+  <div
+    key={id} // Ensure `key` is a unique identifier
+    className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
+  >
+    <div className="flex items-center space-x-4">
+      <div className="w-10 h-10 bg-purple-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
+        {name ? name[0].toUpperCase() : "?"}
+      </div>
+      <span className="text-gray-800 font-medium text-sm">{name || "Unknown"}</span>
+    </div>
+    <button
+      onClick={() => onFollowUnfollow(id, isFollowing)}
+      className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md ${
+        isFollowing
+          ? "bg-red-500 text-white hover:bg-red-600"
+          : "bg-blue-500 text-white hover:bg-blue-600"
+      }`}
+    >
+      {isFollowing ? "Unfollow" : "Follow"}
+    </button>
+  </div>
+))}
     </div>
   );
 };
 
-export default Followers;
+export default FollowersUi;
 
 # components/layout/footer/Footer.css
 
@@ -636,10 +643,10 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
 # components/layout/layout/Layout.css
 .Layout {
     display: grid;
+    grid-template-rows: auto 1fr auto; /* Ensure flexible row height */
     grid-template-columns: 1fr 3fr;
-    grid-template-rows: 1fr 3fr 3fr 1fr;
-    height: 100%;
-}
+    height: 100vh; /* Ensure the layout spans the full viewport */
+  }
 
 .Layout > header {
     grid-column: 1 / span 2;
@@ -661,11 +668,13 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
     grid-row: 3;
 }
 
-.Layout > main {
-    grid-column: 2;
-    grid-row: 2 / span 2;
-    height: 100%; /* Ensure full height allocation */
+
+  
+  .Layout > main {
+    height: 100%; /* Inherit full height from the parent */
+    overflow-y: auto; /* Allow scrolling for the content */
   }
+  
   
 
 .Layout > * {
@@ -673,58 +682,56 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
 }
 
 # components/layout/layout/Layout.tsx
-import Folowers from '../folowers/Folowers';
-import Followings from '../following/Following';
-import Footer from '../footer/Footer';
-import Header from '../header/Header';
-import Routing from '../routing/Routing';
-// import './Layout.css';
-import { Navigate } from 'react-router-dom';
+// components/layout/layout/Layout.tsx
+import React from "react";
+import { Navigate, Outlet } from "react-router-dom";
+import Folowers from "../folowers/Folowers";
+import Followings from "../following/Following";
+import Footer from "../footer/Footer";
+import Header from "../header/Header";
 
 // Utility function to check if the user is authenticated
 const isAuthenticated = (): boolean => {
-    // Look for the presence of the 'auth' cookie
-    return document.cookie.split('; ').some((cookie) => cookie.startsWith('auth='));
+  // Look for the presence of the 'auth' cookie
+  return document.cookie
+    .split("; ")
+    .some((cookie) => cookie.startsWith("auth="));
 };
+
 export default function Layout() {
-    // Redirect to /login if the user is not authenticated
-    if (!isAuthenticated()) {
-      return <Navigate to="/login" />;
-    }
-  
-    return (
-      <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] min-h-screen">
-        {/* Header spans the full width */}
-        <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
-          <Header />
-        </header>
-  
-        {/* First aside section */}
-        <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 overflow-y-auto">
-          <Followings />
-        </aside>
-  
-        {/* Second aside section */}
-        <aside className="col-start-1 row-start-3 bg-white border border-gray-300 p-4 overflow-y-auto">
-          <Folowers />
-        </aside>
-  
-        {/* Main content with a scrollable section */}
-        <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
-          {/* Add scrollable container here */}
-          <div className="max-h-[75vh] overflow-y-auto">
-            <Routing />
-          </div>
-        </main>
-  
-        {/* Footer spans the full width */}
-        <footer className="col-span-2 row-start-4 bg-gray-800 text-white text-center py-4">
-          <Footer />
-        </footer>
-      </div>
-    );
+  // Redirect to /login if the user is not authenticated
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
   }
-  
+
+  return (
+    <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
+      <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
+        <Header />
+      </header>
+
+      <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 h-full grid grid-rows-2 gap-4">
+        <div className="overflow-y-auto">
+          <Followings />
+        </div>
+        <div className="overflow-y-auto">
+          <Folowers />
+        </div>
+      </aside>
+
+      <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
+        <div className="h-full overflow-y-auto">
+          <Outlet />
+        </div>
+      </main>
+
+      <footer className="col-span-2 row-start-4 bg-gray-800 h-5 text-white text-center py-4">
+        <Footer />
+      </footer>
+    </div>
+  );
+}
+
 # components/layout/login/login.tsx
 import React from "react";
 import {
@@ -919,42 +926,30 @@ export default function NotFound(): JSX.Element {
     )
 }
 # components/layout/routing/Routing.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
+// components/layout/routing/Routing.tsx
+import { Routes, Route } from "react-router-dom";
+import Layout from "../layout/Layout";
 import Profile from "../../posts/profile/Profile";
 import Feed from "../../posts/feed/Feed";
-import NotFound from "../not-found/NotFound";
 import LoginPage from "../login/login";
 import LogoutPage from "../logout/logout";
-import EditPost from "../editPost/EditPost";
-
-// Utility function to check if the user is authenticated
-const isAuthenticated = (): boolean => {
-    // Look for the presence of the 'auth' cookie
-    return document.cookie.split('; ').some((cookie) => cookie.startsWith('auth='));
-};
+import NotFound from "../not-found/NotFound";
 
 export default function Routing(): JSX.Element {
-    return (
-        <Routes>
-            {/* Protected routes */}
-            <Route
-                path="/profile"
-                element={isAuthenticated() ? <Profile /> : <Navigate to="/login" />}
-            />
-            <Route
-                path="/feed"
-                element={isAuthenticated() ? <Feed /> : <Navigate to="/login" />}
-            />
-            <Route path="/edit"  element={isAuthenticated() ? <EditPost /> : <Navigate to="/login" />} />
-            {/* log out page */}
-            <Route path="/logout" element={<LogoutPage />} />
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            
-            {/* Catch-all for undefined routes */}
-            <Route path="*" element={<NotFound />} />
-        </Routes>
-    );
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/logout" element={<LogoutPage />} />
+
+      {/* Protected routes inside Layout */}
+      <Route path="/" element={<Layout />}>
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/feed" element={<Feed />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
+  );
 }
 
 # components/posts/feed/Feed.css
@@ -1014,74 +1009,160 @@ export default function Feed() {
 # components/posts/new/NewForm.css
 
 # components/posts/new/NewPost.tsx
-import React, { useState } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
-import PostDraft from '../../../models/posts/PostDraft';
-import InsertPost from '../../../services/InsertPost';
-import TinyEditor from '../../common/TinyEditor';
-import Loading from '../../common/Loading';
+// components/posts/new/NewPost.tsx
+import React, { useState } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import PostDraft from "../../../models/posts/PostDraft";
+import TinyEditor from "../../common/TinyEditor";
+import Loading from "../../common/Loading";
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;
 }
 
+const MIN_TITLE_LENGTH = 10;
+const MIN_BODY_LENGTH = 20;
+
 export default function NewPost({ onAddPost }: NewPostProps) {
-  const { register, handleSubmit, reset, setValue } = useForm<PostDraft>();
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<PostDraft>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bodyContent, setBodyContent] = useState('');
+  const [bodyContent, setBodyContent] = useState("");
+  const [bodyError, setBodyError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const handleEditorChange = (content: string) => {
     setBodyContent(content);
-    setValue('body', content);
+    setValue("body", content);
+    // Clear body error when user starts typing
+    setBodyError(null);
+  };
+
+  const validateBody = (content: string) => {
+    // Strip HTML tags for length validation
+    const stripHtml = (html: string) => {
+      const tmp = document.createElement("DIV");
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || "";
+    };
+
+    const strippedBody = stripHtml(content).trim();
+    
+    if (!strippedBody) {
+      return "Body content is required";
+    }
+    
+    if (strippedBody.length < MIN_BODY_LENGTH) {
+      return `Body must be at least ${MIN_BODY_LENGTH} characters long (currently: ${strippedBody.length})`;
+    }
+
+    return null;
   };
 
   const onSubmit: SubmitHandler<PostDraft> = async (data) => {
+    const bodyValidationError = validateBody(bodyContent);
+    
+    if (bodyValidationError) {
+      setBodyError(bodyValidationError);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setBodyError(null);
+
     try {
-      const newPost = await InsertPost(data);
-      onAddPost(newPost);
+      await onAddPost({ ...data, body: bodyContent });
       reset();
-      setBodyContent('');
+      setBodyContent("");
+      setShowForm(false);
     } catch (error: any) {
-      setError(error.message || 'Failed to add post.');
+      setError(error.message || "Failed to add post.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="bg-white rounded-lg shadow-md p-6 space-y-4"
-    >
-      <Loading isLoading={loading} error={error} onRetry={() => handleSubmit(onSubmit)()} />
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Title</label>
-        <input
-          type="text"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          {...register('title', { required: 'Title is required' })}
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Body</label>
-        <TinyEditor value={bodyContent} onChange={handleEditorChange} />
-      </div>
+    <div className="bg-white rounded-lg shadow-md mb-6">
       <button
-        type="submit"
-        disabled={loading}
-        className={`w-full py-2 px-4 rounded-md text-white ${
-          loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
-        }`}
+        onClick={() => setShowForm(!showForm)}
+        className="w-full p-4 text-left flex justify-between items-center hover:bg-gray-50"
       >
-        {loading ? 'Submitting...' : 'Submit'}
+        <span className="text-lg font-semibold">
+          {showForm ? "Close New Post" : "Create New Post"}
+        </span>
+        <span className="text-2xl">{showForm ? "−" : "+"}</span>
       </button>
-    </form>
+
+      {showForm && (
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 border-t">
+          <Loading isLoading={loading} error={error} />
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              className={`w-full p-2 border rounded-md ${
+                errors.title ? "border-red-500" : "border-gray-300"
+              }`}
+              {...register("title", { 
+                required: "Title is required",
+                minLength: {
+                  value: MIN_TITLE_LENGTH,
+                  message: `Title must be at least ${MIN_TITLE_LENGTH} characters`
+                }
+              })}
+              placeholder={`Enter a title (minimum ${MIN_TITLE_LENGTH} characters)`}
+            />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Body *
+            </label>
+            <TinyEditor
+              value={bodyContent}
+              onChange={handleEditorChange}
+              placeholder={`Write your post content (minimum ${MIN_BODY_LENGTH} characters)...`}
+            />
+            {bodyError && (
+              <p className="mt-1 text-sm text-red-500">{bodyError}</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setBodyContent("");
+                setBodyError(null);
+                setError(null);
+                setShowForm(false);
+              }}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+            >
+              {loading ? "Creating..." : "Create Post"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
-
 # components/posts/post/Post.css
 .posts-inner-container {
     transition: opacity 2.5s ease-in-out;
@@ -1094,71 +1175,55 @@ export default function NewPost({ onAddPost }: NewPostProps) {
   }
   
 # components/posts/post/Post.tsx
-import React, { useState } from 'react';
-import CommentDraft from '../../../models/comment/CommentDraft';
-import PostModel from '../../../models/posts/Post';
-import InsertComment from '../../../services/addComment';
-import updatePost from '../../../services/updatePost';
-import './Post.css';
-import PostsUi from './PostUi';
-import Loading from '../../common/Loading';
+import React, { useState } from "react";
+import { useAppDispatch } from "../../../redux/hooks";
+import { deleteProfilePost, updateProfilePost } from "../../../redux/profileSlice";
+import PostModel from "../../../models/posts/Post";
+import PostsUi from "./PostUi";
 
 interface PostProps {
   post: PostModel;
-  onDelete: (postId: string) => Promise<boolean>;
-  onUpdatePost: (postId: string) => Promise<void>;
-  setPosts: React.Dispatch<React.SetStateAction<PostModel[]>>; // Accept setPosts as a prop
 }
 
-export default function Post(props: PostProps): JSX.Element {
-  const { post, onDelete, onUpdatePost, setPosts } = props;
+export default function Post({ post }: PostProps): JSX.Element {
+  const dispatch = useAppDispatch();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState(post.title);
+  const [newBody, setNewBody] = useState(post.body);
 
-  const handleAddComment = async (postId: string, comment: string): Promise<void> => {
-    const commentData: CommentDraft = { postId, body: comment };
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await InsertComment(commentData);
-      setPosts((prevPosts) =>
-        prevPosts.map((p) =>
-          p.id === postId ? { ...p, comments: [...p.comments, response] } : p
-        )
-      );
-    } catch (e: any) {
-      setError(e.message || 'Failed to add comment.');
-    } finally {
-      setLoading(false);
-    }
+  const profilePictureUrl = "https://cdn.ozari.co.il/beery/noop.jpeg"; // Fixed profile picture URL
+
+  // Handle delete
+  const handleDelete = async () => {
+    await dispatch(deleteProfilePost(post.id));
+    setIsDeleteDialogOpen(false);
   };
 
-  const handleSavePost = async (updatedPost: { title: string; body: string }) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await updatePost(post.id, updatedPost);
-      setPosts((prevPosts) =>
-        prevPosts.map((p) => (p.id === post.id ? { ...p, ...updatedPost } : p))
-      );
-    } catch (error: any) {
-      setError(error.message || 'Failed to update post.');
-    } finally {
-      setLoading(false);
+  // Handle update
+  const handleUpdate = async () => {
+    if (newTitle.trim() && newBody.trim()) {
+      await dispatch(updateProfilePost({ id: post.id, updatedPost: { title: newTitle, body: newBody } }));
+      setIsEditing(false);
     }
   };
 
   return (
-    <>
-      <Loading isLoading={loading} error={error} onRetry={() => {}} />
-      <PostsUi
-        post={post}
-        onDelete={onDelete}
-        onAddComment={handleAddComment}
-        onSavePost={handleSavePost}
-      />
-    </>
+    <PostsUi
+      post={post}
+      profilePictureUrl={profilePictureUrl}
+      isEditing={isEditing}
+      isDeleteDialogOpen={isDeleteDialogOpen}
+      setIsEditing={setIsEditing}
+      setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+      newTitle={newTitle}
+      newBody={newBody}
+      setNewTitle={setNewTitle}
+      setNewBody={setNewBody}
+      onDelete={handleDelete}
+      onUpdate={handleUpdate}
+    />
   );
 }
 
@@ -1205,239 +1270,279 @@ export default function Post(props: PostProps): JSX.Element {
   }
   
 # components/posts/post/PostUi.tsx
+// components/posts/post/PostUi.tsx
 import React, { useState } from "react";
-import {
-  Typography,
-  Card,
-  CardContent,
-  IconButton,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Button,
-  Box,
-} from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import CommentIcon from "@mui/icons-material/Comment";
-import { Editor } from "@tinymce/tinymce-react";
-import { useNavigate } from "react-router-dom";
+import { useAppDispatch } from "../../../redux/hooks";
+import { addCommentToPost } from "../../../redux/profileSlice";
+import TinyEditor from "../../common/TinyEditor";
 import PostModel from "../../../models/posts/Post";
-import './PostsUi.css';
 
 interface PostsUiProps {
   post: PostModel;
-  onDelete: (id: string) => Promise<boolean>;
-  onAddComment: (postId: string, comment: string) => Promise<void>;
-  onSavePost: (post: { title: string; body: string }) => Promise<void>;
+  profilePictureUrl: string;
+  isEditing: boolean;
+  isDeleteDialogOpen: boolean;
+  setIsEditing: (value: boolean) => void;
+  setIsDeleteDialogOpen: (value: boolean) => void;
+  newTitle: string;
+  newBody: string;
+  setNewTitle: (value: string) => void;
+  setNewBody: (value: string) => void;
+  onDelete: () => Promise<void>;
+  onUpdate: () => Promise<void>;
 }
 
-export default function PostsUi(props: PostsUiProps): JSX.Element {
-  const { post, onDelete, onAddComment, onSavePost } = props;
-  const { title, body, createdAt, id, comments = [] } = post;
-  const userName = post.user?.name ?? "Anonymous";
+const MIN_COMMENT_LENGTH = 20;
 
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [openCommentsModal, setOpenCommentsModal] = useState(false);
-  const [isEditingPost, setIsEditingPost] = useState(false);
-  const [newPostBody, setNewPostBody] = useState(body || "");
-  const [newPostTitle, setNewPostTitle] = useState(title || "");
+export default function PostsUi({
+  post,
+  profilePictureUrl,
+  isEditing,
+  isDeleteDialogOpen,
+  setIsEditing,
+  setIsDeleteDialogOpen,
+  newTitle,
+  newBody,
+  setNewTitle,
+  setNewBody,
+  onDelete,
+  onUpdate,
+}: PostsUiProps): JSX.Element {
+  const dispatch = useAppDispatch();
+  const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
 
-  const navigate = useNavigate();
+  const validateComment = (comment: string) => {
+    // Strip HTML tags for length validation
+    const stripHtml = (html: string) => {
+      const tmp = document.createElement("DIV");
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || "";
+    };
 
-  const handleDelete = async () => {
-    const isDeleted = await onDelete(id);
-    if (isDeleted) {
-      setOpenDeleteDialog(false);
-    }
+    const strippedComment = stripHtml(comment);
+    return strippedComment.length >= MIN_COMMENT_LENGTH;
   };
 
   const handleAddComment = async () => {
-    if (newComment.trim()) {
-      await onAddComment(id, newComment);
+    setCommentError(null);
+
+    if (!validateComment(newComment)) {
+      setCommentError(`Comment must be at least ${MIN_COMMENT_LENGTH} characters long`);
+      return;
+    }
+
+    try {
+      await dispatch(addCommentToPost({
+        postId: post.id,
+        body: newComment
+      })).unwrap();
       setNewComment("");
+    } catch (error) {
+      console.error("Failed to add comment:", error);
+      setCommentError("Failed to add comment. Please try again.");
     }
   };
 
-  const handleSavePost = async () => {
-    if (newPostTitle.trim() && newPostBody.trim()) {
-      await onSavePost({ title: newPostTitle, body: newPostBody });
-      setIsEditingPost(false);
+  const handleUpdate = async () => {
+    try {
+      await onUpdate();
+    } catch (error) {
+      console.error("Failed to update post:", error);
     }
   };
 
   return (
-    <Card className="post-card">
-      {/* Toolbar with Icons */}
-      <Box className="toolbar">
-        <Typography variant="subtitle1" className="post-header">
+    <div className="border rounded-lg shadow-lg bg-white p-6 mb-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <img
-            src={`https://cdn.ozari.co.il/beery/noop.jpeg`}
-            alt={`${userName}'s profile`}
-            className="profile-pic"
+            src={profilePictureUrl}
+            alt="Profile"
+            className="w-10 h-10 rounded-full mr-4"
           />
-          {userName} at {new Date(createdAt).toLocaleString()}
-        </Typography>
-
-        <Box>
-          <IconButton
-            aria-label="comments"
-            color="primary"
-            onClick={() => setOpenCommentsModal(true)}
+          <div>
+            <h2 className="text-lg font-semibold">{post.user?.name || "Anonymous"}</h2>
+            <p className="text-sm text-gray-500">{new Date(post.createdAt).toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setShowComments(true)}
+            className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+            title="Comments"
           >
-            <CommentIcon />
-          </IconButton>
-
-          <IconButton
-            aria-label="edit"
-            color="primary"
-            onClick={() => setIsEditingPost(true)}
+            💬 {post.comments?.length || 0}
+          </button>
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className={`p-2 rounded-full ${
+              isEditing ? "bg-gray-400 hover:bg-gray-500" : "bg-green-500 hover:bg-green-600"
+            } text-white`}
+            title="Edit"
           >
-            <EditIcon />
-          </IconButton>
-
-          <IconButton
-            aria-label="delete"
-            color="error"
-            onClick={() => setOpenDeleteDialog(true)}
+            ✏️
+          </button>
+          <button
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
+            title="Delete"
           >
-            <DeleteIcon />
-          </IconButton>
-        </Box>
-      </Box>
+            🗑️
+          </button>
+        </div>
+      </div>
 
-      <CardContent>
-        {isEditingPost ? (
-          <>
-            <input
-              type="text"
-              value={newPostTitle}
-              onChange={(e) => setNewPostTitle(e.target.value)}
-              placeholder="Post Title"
-              className="post-title-input"
-            />
-            <Editor
-              apiKey={import.meta.env.VITE_TINYMCE_KEY}
-              value={newPostBody}
-              init={{
-                height: 300,
-                menubar: false,
-                plugins: ["lists", "link", "emoticons"],
-                toolbar:
-                  "undo redo | bold italic | bullist numlist outdent indent | emoticons",
-              }}
-              onEditorChange={(content) => setNewPostBody(content)}
-            />
-            <Box className="post-edit-actions">
-              <Button
-                onClick={handleSavePost}
-                variant="contained"
-                color="primary"
-              >
-                Save
-              </Button>
-              <Button
-                onClick={() => setIsEditingPost(false)}
-                variant="outlined"
-                color="secondary"
-              >
-                Cancel
-              </Button>
-            </Box>
-          </>
-        ) : (
-          <>
-            <Typography variant="h5" className="post-title" gutterBottom>
-              {title}
-            </Typography>
-            <Typography
-              variant="body1"
-              className="post-body"
-              dangerouslySetInnerHTML={{ __html: body }}
-            />
-          </>
-        )}
-      </CardContent>
+      {/* Content Section */}
+      {!isEditing ? (
+        <div className="mt-4">
+          <h3 className="text-xl font-bold">{post.title}</h3>
+          <div
+            className="mt-2 text-gray-700"
+            dangerouslySetInnerHTML={{ __html: post.body }}
+          />
+        </div>
+      ) : (
+        <div className="mt-4">
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="w-full p-2 border rounded-md mb-4"
+            placeholder="Enter title"
+            minLength={10}
+          />
+          <TinyEditor
+            value={newBody}
+            onChange={setNewBody}
+            placeholder="Enter content..."
+          />
+          <div className="mt-4 flex justify-end space-x-4">
+            <button
+              onClick={handleUpdate}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Comments Modal */}
-      <Dialog
-        open={openCommentsModal}
-        onClose={() => setOpenCommentsModal(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Comments</DialogTitle>
-        <DialogContent>
-          {comments?.map((comment) => (
-            <div key={comment.id} className="comment-item">
-              <Typography variant="body2" color="text.primary">
-                <strong>{comment.user?.name ?? "Anonymous"}</strong>:
-                <span dangerouslySetInnerHTML={{ __html: comment.body }} />
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {new Date(comment.createdAt).toLocaleString()}
-              </Typography>
+      {showComments && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white w-11/12 md:max-w-2xl p-6 rounded-lg shadow-lg overflow-y-auto max-h-screen">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Comments ({post.comments?.length || 0})</h3>
+              <button
+                onClick={() => setShowComments(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
-          ))}
 
-          {/* TinyMCE Editor */}
-          <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_KEY}
-            value={newComment}
-            init={{
-              height: 200,
-              menubar: false,
-              plugins: ["lists", "link", "emoticons"],
-              toolbar:
-                "undo redo | bold italic | bullist numlist outdent indent | emoticons",
-            }}
-            onEditorChange={(content) => setNewComment(content)}
-          />
+            <div className="space-y-4 mb-6">
+              {post.comments?.map((comment) => (
+                <div key={comment.id} className="border-b pb-4">
+                  <div className="flex items-center mb-2">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm mr-2">
+                      {comment.user?.name?.[0] || 'A'}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{comment.user?.name || "Anonymous"}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(comment.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className="text-gray-700 pl-10"
+                    dangerouslySetInnerHTML={{ __html: comment.body }}
+                  />
+                </div>
+              ))}
+              {post.comments?.length === 0 && (
+                <p className="text-gray-500 text-center">No comments yet</p>
+              )}
+            </div>
 
-          <Button
-            onClick={handleAddComment}
-            variant="contained"
-            color="primary"
-            className="submit-comment"
-          >
-            Submit Comment
-          </Button>
-        </DialogContent>
-      </Dialog>
+            <div className="border-t pt-4">
+              <div className="mb-4">
+                <TinyEditor
+                  value={newComment}
+                  onChange={setNewComment}
+                  placeholder="Add a comment..."
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Minimum {MIN_COMMENT_LENGTH} characters required
+                </p>
+                {commentError && (
+                  <p className="mt-1 text-sm text-red-500">{commentError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => setShowComments(false)}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddComment}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+                  disabled={!newComment.trim()}
+                >
+                  Add Comment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          Are you sure you want to delete this post? This action cannot be
-          undone.
-        </DialogContent>
-        <Button
-          onClick={() => setOpenDeleteDialog(false)}
-          variant="outlined"
-          color="primary"
-        >
-          Cancel
-        </Button>
-        <Button onClick={handleDelete} variant="contained" color="error">
-          Delete
-        </Button>
-      </Dialog>
-    </Card>
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h3 className="text-lg font-bold mb-4">Delete Post</h3>
+            <p className="mb-4">Are you sure you want to delete this post?</p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onDelete}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
-
 # components/posts/profile/Profile.css
 .posts-container {
-    height: calc(100vh - 200px); /* Adjust based on your header/footer height */
+    flex-grow: 1; /* Fill available space */
+    height: 100%; /* Allow the container to take up the full height */
     overflow-y: auto;
     padding: 16px;
-    scrollbar-width: thin;
   }
+  
   
   .posts-container::-webkit-scrollbar {
     width: 6px;
@@ -1449,58 +1554,73 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
   }
   
 # components/posts/profile/Profile.tsx
-import React, { useEffect, useState } from 'react';
-import Post from '../post/Post';
-import NewPost from '../new/NewPost';
-import profileService from '../../../services/Profile';
-import PostModel from '../../../models/posts/Post';
-import useTitle from '../../../hooks/useTitle';
-import Loading from '../../common/Loading';
+// components/posts/profile/Profile.tsx
+import React, { useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
+import { fetchProfilePosts, addProfilePost } from "../../../redux/profileSlice";
+import NewPost from "../new/NewPost";
+import Post from "../post/Post";
+import Loading from "../../common/Loading";
+import useTitle from "../../../hooks/useTitle";
+import "./Profile.css";
 
 export default function Profile() {
-  const [posts, setPosts] = useState<PostModel[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  useTitle("Profile");
+  const dispatch = useAppDispatch();
+  const { posts, loading, error } = useAppSelector((state) => {
+    console.log("Current Redux State:", state); // Debug log
+    return state.profile;
+  });
 
-  useTitle('Profile');
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const resultAction = await dispatch(fetchProfilePosts()).unwrap();
+        console.log("Fetched posts:", resultAction); // Debug log
+      } catch (err) {
+        console.error("Failed to fetch posts:", err); // Debug log
+      }
+    };
+    loadPosts();
+  }, [dispatch]);
 
-  const fetchPosts = async () => {
-    setLoading(true);
-    setError(null);
+  const handleAddPost = async (newPost) => {
     try {
-      const data = await profileService.getProfile();
-      setPosts(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch posts.');
-    } finally {
-      setLoading(false);
+      const resultAction = await dispatch(addProfilePost(newPost)).unwrap();
+      console.log("Added new post:", resultAction); // Debug log
+    } catch (err) {
+      console.error("Failed to add post:", err); // Debug log
     }
   };
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+  // Debug log for render
+  console.log("Current posts:", posts);
 
-  const handleAddPost = (newPost: PostModel) => {
-    setPosts((prev) => [newPost, ...prev]);
-  };
+  if (loading) {
+    return <Loading isLoading={true} />;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="flex flex-col h-full bg-gray-100 p-4">
-      <Loading isLoading={loading} error={error} onRetry={fetchPosts} />
+      <NewPost onAddPost={handleAddPost} />
       <div className="posts-container flex-grow mt-6">
-        <NewPost onAddPost={handleAddPost} />
-        <div className="posts-container flex-grow mt-6">
-          {!loading &&
-            posts.map((post) => (
-              <Post key={post.id} post={post} />
-            ))}
-        </div>
+        {Array.isArray(posts) && posts.length > 0 ? (
+          posts.map((post) => (
+            <Post key={post.id} post={post} />
+          ))
+        ) : (
+          <div className="text-center text-gray-500 mt-4">
+            No posts found. Create your first post above!
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
 # hooks/useTitle.ts
 import { useEffect } from "react";
 
@@ -1534,16 +1654,16 @@ import * as Sentry from "@sentry/react";
 
 
 
-Sentry.init({
-  dsn: "https://106544dd7f0888e8cf6de5f307cd654f@o4508091701592065.ingest.us.sentry.io/4508629353234432",
-  integrations: [
-    Sentry.browserTracingIntegration(),
-  ],
-  // Tracing
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
-  // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
-  tracePropagationTargets: ["localhost", /^https:\/\/jb\.noop\.co\.il/],
-});
+// Sentry.init({
+//   dsn: "https://106544dd7f0888e8cf6de5f307cd654f@o4508091701592065.ingest.us.sentry.io/4508629353234432",
+//   integrations: [
+//     Sentry.browserTracingIntegration(),
+//   ],
+//   // Tracing
+//   tracesSampleRate: 1.0, //  Capture 100% of the transactions
+//   // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+//   tracePropagationTargets: ["localhost", /^https:\/\/jb\.noop\.co\.il/],
+// });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -1605,6 +1725,38 @@ export default interface User {
     createdAt: string;
     updatedAt: string;
 }
+# redux/followersSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import User from '../models/users/Users';
+
+interface FollowersState {
+  followers: User[];
+}
+
+const initialState: FollowersState = {
+  followers: [],
+};
+
+export const followersSlice = createSlice({
+  name: 'followers',
+  initialState,
+  reducers: {
+    init: (state, action: PayloadAction<User[]>) => {
+      state.followers = action.payload;
+    },
+    unfollow: (state, action: PayloadAction<string>) => {
+      state.followers = state.followers.filter(user => user.id !== action.payload);
+    },
+    follow: (state, action: PayloadAction<User>) => {
+      state.followers.push(action.payload);
+    },
+  },
+});
+
+export const { init, unfollow, follow } = followersSlice.actions;
+
+export default followersSlice.reducer;
+
 # redux/followingSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import User from '../models/users/Users';
@@ -1637,27 +1789,212 @@ export const followingSlice = createSlice({
 export const { init, unfollow, follow } = followingSlice.actions
 
 export default followingSlice.reducer
+# redux/hooks.ts
+import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from './store';
+
+export const useAppDispatch = () => useDispatch<AppDispatch>();
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+# redux/profileSlice.ts
+// redux/profileSlice.ts
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import profileService from "../services/Profile";
+import Post from "../models/posts/Post";
+import PostDraft from "../models/posts/PostDraft";
+
+interface ProfileState {
+  posts: Post[];
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: ProfileState = {
+  posts: [],
+  loading: false,
+  error: null,
+};
+
+// Fetch posts
+export const fetchProfilePosts = createAsyncThunk(
+  "profile/fetchPosts",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await profileService.getProfile();
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to fetch posts.");
+    }
+  }
+);
+
+// Add post
+export const addProfilePost = createAsyncThunk(
+  "profile/addPost",
+  async (newPost: PostDraft, { rejectWithValue }) => {
+    try {
+      return await profileService.addPost(newPost);
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to add post.");
+    }
+  }
+);
+
+// Update post
+export const updateProfilePost = createAsyncThunk(
+  "profile/updatePost",
+  async ({ id, updatedPost }: { id: string; updatedPost: PostDraft }, { rejectWithValue }) => {
+    try {
+      const response = await profileService.updatePost(id, updatedPost);
+      return { id, updatedPost: response };
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to update post.");
+    }
+  }
+);
+
+// Delete post
+export const deleteProfilePost = createAsyncThunk(
+  "profile/deletePost",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await profileService.removePost(id);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to delete post.");
+    }
+  }
+);
+
+// Add comment
+export const addCommentToPost = createAsyncThunk(
+  "profile/addComment",
+  async ({ postId, body }: { postId: string; body: string }, { rejectWithValue }) => {
+    try {
+      const newComment = await profileService.addComment(postId, body);
+      return { postId, comment: newComment };
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Failed to add comment.");
+    }
+  }
+);
+
+const profileSlice = createSlice({
+  name: "profile",
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      // Fetch posts
+      .addCase(fetchProfilePosts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProfilePosts.fulfilled, (state, action: PayloadAction<Post[]>) => {
+        state.posts = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchProfilePosts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Add post
+      .addCase(addProfilePost.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(addProfilePost.fulfilled, (state, action: PayloadAction<Post>) => {
+        state.posts.unshift(action.payload);
+        state.loading = false;
+      })
+      .addCase(addProfilePost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update post
+      .addCase(updateProfilePost.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(updateProfilePost.fulfilled, (state, action) => {
+        const { id, updatedPost } = action.payload;
+        const index = state.posts.findIndex(post => post.id === id);
+        if (index !== -1) {
+          state.posts[index] = { ...state.posts[index], ...updatedPost };
+        }
+        state.loading = false;
+      })
+      .addCase(updateProfilePost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Delete post
+      .addCase(deleteProfilePost.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(deleteProfilePost.fulfilled, (state, action) => {
+        state.posts = state.posts.filter(post => post.id !== action.payload);
+        state.loading = false;
+      })
+      .addCase(deleteProfilePost.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Add comment
+      .addCase(addCommentToPost.fulfilled, (state, action) => {
+        const { postId, comment } = action.payload;
+        const post = state.posts.find(p => p.id === postId);
+        if (post) {
+          if (!post.comments) {
+            post.comments = [];
+          }
+          post.comments.push(comment);
+        }
+      })
+      .addCase(addCommentToPost.rejected, (state, action) => {
+        state.error = action.payload as string;
+      });
+  },
+});
+
+export default profileSlice.reducer;
+# redux/store.ts
+import { configureStore } from "@reduxjs/toolkit";
+import followingSlice from "./followingSlice";
+import followersSlice from "./followersSlice";
+import profileSlice from "./profileSlice";
+
+const store = configureStore({
+  reducer: {
+    following: followingSlice,
+    followers: followersSlice,
+    profile: profileSlice, // Add the profile slice here
+  },
+});
+
+export default store;
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
 # services/addComment.ts
 import axios from "axios";
 import CommentDraft from "../models/comment/CommentDraft";
 import Comment from "../models/comment/Comments";
 
 
-export default async function InsertComment(commentData:CommentDraft):Promise<Comment> {
-  const jsonData = {"body" : commentData.body};
-  const response = await axios.post(
-    `${import.meta.env.VITE_REST_SERVER_URL}/comments/${commentData.postId}`,
-    jsonData,
-    {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  console.log(`Comment added to post with id ${commentData.postId}: ${commentData.body}`);
-  console.log(jsonData);
-  console.log(response);
-  return response.data as Comment;
+export default async function InsertComment(commentData: CommentDraft): Promise<Comment> {
+  const jsonData = { body: commentData.body };
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_REST_SERVER_URL}/comments/${commentData.postId}`,
+      jsonData,
+      { headers: { "Content-Type": "application/json" } }
+    );
+    console.log("Comment added successfully:", response.data);
+    return response.data as Comment;
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    throw error; // Ensure the caller knows there was a failure
+  }
+
 }
 
 # services/Feed.ts
@@ -1676,39 +2013,36 @@ console.log(feed);
 export default feed;
 # services/FollowersService.ts
 import axios from "axios";
-// import userFollower from "../models/userFollower/UserFollower";
 import User from "../models/users/Users";
 
 class FollowerService {
-    async getFollowers(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
-        console.log(`Followers: ${response.data}`);
-        return response.data;
-    }
+  async getFollowers(): Promise<User[]> {
+    console.log("Fetching followers...");
+    const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
+    return response.data;
+  }
 
-    async followUser(id:string) {
-        const response = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/follow/${id}`);
-        console.log(`User with id ${id} followed`);
-        return response.data;
-    }
+  async followUser(id: string): Promise<void> {
+    console.log(`Following user with ID: ${id}`);
+    await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/follow/${id}`);
+  }
 
-    async unfollowUser(id:string) {
-        const response = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/unfollow/${id}`);
-        console.log(`User with id ${id} unfollowed`);
-        return response.data;
-    }
+  async unfollowUser(id: string):Promise<void> {
+    console.log(`Unfollowing user with ID: ${id}`);
+    const response = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/unfollow/${id}`);
+    return response.data;
+  }
 
-
-    async getFollowing(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
-        console.log(`Following: ${response.data}`);
-        return response.data;
-    }
+  async getFollowing(): Promise<User[]> {
+    console.log("Fetching following...");
+    const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
+    return response.data;
+  }
 }
 
 const followerService = new FollowerService();
-console.log(followerService);
 export default followerService;
+
 # services/GetSinglePost.ts
 import axios from "axios";
 import Post from "../models/posts/Post";
@@ -1746,23 +2080,105 @@ export default async function InsertPost(post: PostDraft):Promise<PostModel> {
 }
 
 # services/Profile.ts
+// services/Profile.ts
 import axios from "axios";
 import Post from "../models/posts/Post";
+import PostDraft from "../models/posts/PostDraft";
+import Comment from "../models/comment/Comments";
 
 class Profile {
-    async getProfile(): Promise<Post[]> {
-        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/posts`);
-        return response.data;
+    private baseURL: string;
+
+    constructor() {
+        this.baseURL = import.meta.env.VITE_REST_SERVER_URL;
+        console.log("API Base URL:", this.baseURL); // Debug log
     }
 
-    async removePost(id: string): Promise<boolean> {
-        const response = await axios.delete(`${import.meta.env.VITE_REST_SERVER_URL}/posts/${id}`);
-        return response.data;
+    async getProfile(): Promise<Post[]> {
+        try {
+            console.log("Fetching posts from:", `${this.baseURL}/posts`); // Debug log
+            const response = await axios.get<Post[]>(`${this.baseURL}/posts`);
+            console.log("API Response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching posts:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async addPost(post: PostDraft): Promise<Post> {
+        try {
+            console.log("Adding post:", post); // Debug log
+            const response = await axios.post(
+                `${this.baseURL}/posts`,
+                post,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("Add post response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error adding post:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async updatePost(id: string, post: PostDraft): Promise<Post> {
+        try {
+            console.log("Updating post:", id, post); // Debug log
+            const response = await axios.patch(
+                `${this.baseURL}/posts/${id}`,
+                post,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("Update post response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error updating post:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async removePost(id: string): Promise<void> {
+        try {
+            console.log("Removing post:", id); // Debug log
+            await axios.delete(`${this.baseURL}/posts/${id}`);
+            console.log("Post removed successfully"); // Debug log
+        } catch (error) {
+            console.error("Error removing post:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async addComment(postId: string, body: string): Promise<Comment> {
+        try {
+            console.log("Adding comment to post:", postId, body); // Debug log
+            const response = await axios.post(
+                `${this.baseURL}/comments/${postId}`,
+                { body },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("Add comment response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error adding comment:", error); // Debug log
+            throw error;
+        }
     }
 }
 
 const profile = new Profile();
-console.log(profile);
 export default profile;
 # services/updatePost.ts
 import axios from "axios";

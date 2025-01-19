@@ -1,18 +1,18 @@
-import { BrowserRouter,Route, Routes } from 'react-router-dom'
-import Layout from '../layout/layout/Layout'
-import './App.css'
-import LoginPage from '../layout/login/login'
+// components/app/App.tsx
+import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+import Routing from "../layout/routing/Routing";
+import store from "../../redux/store";
+import "./App.css";
 
 export default function App(): JSX.Element {
-    return (
-        <div className="App">
-            <BrowserRouter>
-            <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="*" element={<Layout />} />
-            </Routes>
-            </BrowserRouter>
-            
-        </div>
-    )
+  return (
+    <div className="App">
+      <Provider store={store}>
+        <BrowserRouter>
+          <Routing />
+        </BrowserRouter>
+      </Provider>
+    </div>
+  );
 }
