@@ -1,24 +1,15 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: [
+    './index.html', // For the Vite entry file
+    './src/**/*.{js,ts,jsx,tsx}', // All source files
+  ],
   theme: {
-    extend: {
-      // Add base styles for all scrollable elements
-      scrollbar: {
-        DEFAULT: {
-          "&::-webkit-scrollbar": {
-            width: "8px",
-            height: "8px",
-          },
-          "&::-webkit-scrollbar-thumb": {
-            backgroundColor: "#4b5563", // Gray
-            borderRadius: "4px",
-          },
-          "&::-webkit-scrollbar-track": {
-            backgroundColor: "#f3f4f6", // Light Gray
-          },
-        },
-      },
-    },
+    extend: {},
   },
-  plugins: [require("tailwind-scrollbar")],
+  plugins: [
+    require("tailwind-scrollbar"),
+    require('@tailwindcss/typography')
+
+  ],
 };

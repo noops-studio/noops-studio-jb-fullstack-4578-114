@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import PostDraft from '../../../models/posts/PostDraft';
 import InsertPost from '../../../services/InsertPost';
+import TinyEditor from '../../common/TinyEditor';
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;
 }
 
 export default function NewPost({ onAddPost }: NewPostProps) {
-  const { register, handleSubmit, reset } = useForm<PostDraft>();
+  const { register, handleSubmit, reset, setValue } = useForm<PostDraft>();
   const [loading, setLoading] = useState(false);
+  const [bodyContent, setBodyContent] = useState('');
+
+  const handleEditorChange = (content: string) => {
+    setBodyContent(content);
+    setValue('body', content);
+  };
 
   const onSubmit: SubmitHandler<PostDraft> = async (data) => {
     setLoading(true);
@@ -17,6 +24,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
       const newPost = await InsertPost(data);
       onAddPost(newPost);
       reset();
+      setBodyContent('');
     } catch (error) {
       console.error('Failed to create post', error);
     } finally {
@@ -39,10 +47,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Body</label>
-        <textarea
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          {...register('body', { required: 'Body is required' })}
-        />
+        <TinyEditor value={bodyContent} onChange={handleEditorChange} />
       </div>
       <button
         type="submit"

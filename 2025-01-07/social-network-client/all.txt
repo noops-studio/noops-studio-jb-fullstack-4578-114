@@ -22,66 +22,113 @@ export default function App(): JSX.Element {
         </div>
     )
 }
-# components/layout/editPost/EditPost.tsx
-import React, { useState } from "react";
-import {
-  Typography,
-  Card,
-  CardContent,
-  IconButton,
-  Box,
-} from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import EditPostUi from "../../layout/editPost/EditPostUi";
-import PostModel from "../../../models/posts/Post";
+# components/common/setTitle.ts
+import { useEffect } from "react";
 
-interface PostsUiProps {
-  post: PostModel;
-  onDelete: (id: string) => Promise<boolean>;
-  onSavePost: (post: { title: string; body: string }) => Promise<void>;
+export default function setTitle(title: string) {
+    useEffect(() => {
+        document.title = title;
+    }, [title]);
+}
+# components/common/TinyEditor.tsx
+import React from 'react';
+import { Editor } from '@tinymce/tinymce-react';
+
+interface TinyEditorProps {
+  value: string;
+  onChange: (content: string) => void;
+  placeholder?: string;
+  height?: number;
 }
 
-export default function PostsUi({ post, onDelete, onSavePost }: PostsUiProps) {
+export default function TinyEditor({
+  value,
+  onChange,
+  placeholder = 'Type your content here...',
+  height = 300,
+}: TinyEditorProps) {
+  return (
+    <Editor
+      apiKey={import.meta.env.VITE_TINYMCE_KEY}
+      value={value}
+      init={{
+        height,
+        menubar: false,
+        plugins: ['lists', 'link', 'emoticons'],
+        toolbar: 'undo redo | bold italic | bullist numlist outdent indent | emoticons',
+        placeholder,
+        content_style: `
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+        `,
+      }}
+      onEditorChange={onChange}
+    />
+  );
+}
+
+# components/layout/editPost/EditPost.tsx
+import React, { useState } from "react";
+import EditPostUi from "./EditPostUi";
+import PostModel from "../../../models/posts/Post";
+
+interface EditPostProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<boolean>;
+  onSavePost: (updatedPost: { title: string; body: string; postId: string }) => Promise<void>;
+}
+
+export default function EditPost({ post, onDelete, onSavePost }: EditPostProps) {
   const { id, title, body, createdAt } = post;
 
-  const handleSavePost = async (updatedPost: { title: string; body: string }) => {
+  const handleSavePost = async (updatedPost: { title: string; body: string; postId: string }) => {
     await onSavePost(updatedPost);
   };
 
-  return (
-    <Card className="post-card">
-      <Box className="toolbar">
-        <Typography variant="subtitle1">
-          {title} at {new Date(createdAt).toLocaleString()}
-        </Typography>
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this post?")) {
+      await onDelete(id);
+    }
+  };
 
-        <Box>
-          <IconButton aria-label="edit" color="primary">
-            <EditPostUi
-              title={title}
-              body={body}
-              postId={id}
-              onSave={handleSavePost}
-            />
-          </IconButton>
-          <IconButton
-            aria-label="delete"
-            color="error"
-            onClick={() => onDelete(id)}
+  return (
+    <div className="p-4 bg-white shadow-md rounded-lg mb-6">
+      {/* Post Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <p className="text-sm text-gray-500">
+            Created at {new Date(createdAt).toLocaleString()}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          {/* Edit Post Button */}
+          <EditPostUi title={title} body={body} postId={id} onSave={handleSavePost} />
+
+          {/* Delete Button */}
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            onClick={handleDelete}
           >
-            <DeleteIcon />
-          </IconButton>
-        </Box>
-      </Box>
-    </Card>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Post Body */}
+      <div className="prose">
+        <div dangerouslySetInnerHTML={{ __html: body }} />
+      </div>
+    </div>
   );
 }
 
 # components/layout/editPost/EditPostUi.tsx
-import React, { useState } from "react";
-import { Box, Typography, TextField, Button, Modal } from "@mui/material";
-import { Editor } from "@tinymce/tinymce-react";
+import React, { useState } from 'react';
+import TinyEditor from '../../common/TinyEditor';
 
 interface EditPostUiProps {
   title: string;
@@ -104,71 +151,64 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
   };
 
   return (
-    <Box sx={{ maxWidth: 600, margin: "auto", padding: 4 }}>
-      <Button variant="contained" color="primary" onClick={handleOpenModal}>
-        Edit Post
-      </Button>
-
-      <Modal
-        open={isModalOpen}
-        onClose={handleCloseModal}
-        aria-labelledby="edit-post-modal"
-        aria-describedby="edit-post-details"
+    <div className="text-center">
+      <button
+        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        onClick={handleOpenModal}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 600,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-          }}
-        >
-          <Typography variant="h5" gutterBottom>
-            Edit Post
-          </Typography>
+        Edit Post
+      </button>
 
-          {/* Title Input */}
-          <TextField
-            fullWidth
-            label="Title"
-            value={postTitle}
-            onChange={(e) => setPostTitle(e.target.value)}
-            margin="normal"
-            variant="outlined"
-            placeholder="Enter a title for your post"
-          />
+      {isModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-3xl p-6">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Edit Post</h2>
 
-          {/* Post Body Editor */}
-          <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_KEY}
-            value={postBody}
-            init={{
-              height: 300,
-              menubar: false,
-              plugins: ["lists", "link", "emoticons"],
-              toolbar:
-                "undo redo | bold italic | bullist numlist outdent indent | emoticons",
-            }}
-            onEditorChange={(content) => setPostBody(content)}
-          />
+            <div className="mb-6">
+              <label
+                htmlFor="post-title"
+                className="block text-gray-700 text-sm font-medium mb-1"
+              >
+                Title
+              </label>
+              <input
+                id="post-title"
+                type="text"
+                value={postTitle}
+                onChange={(e) => setPostTitle(e.target.value)}
+                placeholder="Enter a title for your post"
+                className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2 text-base focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200 placeholder-gray-400 hover:shadow-md"
+              />
+            </div>
 
-          {/* Action Buttons */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
-            <Button variant="outlined" onClick={handleCloseModal}>
-              Cancel
-            </Button>
-            <Button variant="contained" color="primary" onClick={handleConfirmUpdate}>
-              Save
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-    </Box>
+            <div className="mb-6">
+              <label
+                htmlFor="post-body"
+                className="block text-gray-700 text-sm font-medium mb-1"
+              >
+                Body
+              </label>
+              <TinyEditor value={postBody} onChange={setPostBody} />
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                onClick={handleCloseModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handleConfirmUpdate}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -250,10 +290,10 @@ export default function Followings(): JSX.Element {
   }, []);
 
   return (
-    <div className="Following">
-      <h1>Following List</h1>
-      <FollowingUi following={following} onUpdate={fetchFollowing} />
-    </div>
+<div className="h-full">
+  <h1 className="text-lg font-semibold mb-4">Following List</h1>
+  <FollowingUi following={following} onUpdate={fetchFollowing} />
+</div>
   );
 }
 
@@ -342,25 +382,17 @@ export default function Folowers(): JSX.Element {
   }, []);
 
   return (
-    <div className="Folowers">
-      <h1>Followers List</h1>
-      <Followers followers={followers} onUpdate={fetchFollowers} />
-    </div>
+<div className="h-full">
+  <h1 className="text-lg font-semibold mb-4">Followers List</h1>
+  <Followers followers={followers} onUpdate={fetchFollowers} />
+</div>
   );
 }
 
 # components/layout/folowers/FolowersUi.tsx
+// FollowersUi.tsx
 import React from "react";
-import {
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  Box,
-  Avatar,
-} from "@mui/material";
-import { deepPurple } from "@mui/material/colors";
-import FollowButton from "../follow/FollowButton";
+import followerService from "../../../services/FollowersService";
 
 interface FollowersProps {
   followers: { id: string; name: string; isFollowing: boolean }[];
@@ -369,29 +401,42 @@ interface FollowersProps {
 
 const Followers: React.FC<FollowersProps> = ({ followers, onUpdate }) => {
   return (
-    <Box sx={{ flexGrow: 1, padding: 2, maxHeight: "200px", overflowY: "auto" }}>
-      <Grid container direction="column" spacing={2}>
-        {followers.map(({ id, name, isFollowing }) => (
-          <Grid item xs={12} key={id}>
-            <Card sx={{ display: "flex", alignItems: "center", padding: 2 }}>
-              <Avatar sx={{ bgcolor: deepPurple[500], marginRight: 2 }}>
-                {name[0].toUpperCase()}
-              </Avatar>
-              <CardContent>
-                <Typography variant="h6" component="div">
-                  {name}
-                </Typography>
-                <FollowButton
-                  userId={id}
-                  isFollowing={isFollowing}
-                  onUpdate={onUpdate}
-                />
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
+    <div className="flex flex-col p-4 bg-gray-50 rounded-md shadow-md max-h-80 overflow-y-auto">
+      {followers.map(({ id, name, isFollowing }) => (
+        <div
+          key={id}
+          className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
+        >
+          {/* Avatar */}
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-purple-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
+              {name[0].toUpperCase()}
+            </div>
+            <span className="text-gray-800 font-medium text-sm">{name}</span>
+          </div>
+
+          {/* Follow/Unfollow Button */}
+          <button
+            onClick={async () => {
+              if (isFollowing) {
+                await followerService.unfollowUser(id);
+              } else {
+                await followerService.followUser(id);
+              }
+              onUpdate();
+            }}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md
+              ${isFollowing ? "bg-red-500 text-white hover:bg-red-600" : "bg-blue-500 text-white hover:bg-blue-600"}`}
+          >
+            {isFollowing ? "Unfollow" : "Follow"}
+          </button>
+        </div>
+      ))}
+
+      {followers.length === 0 && (
+        <p className="text-gray-500 text-center">No followers to display.</p>
+      )}
+    </div>
   );
 };
 
@@ -404,11 +449,12 @@ import './Footer.css'
 
 export default function Footer() {
     return (
-        <div className='Footer'>
-            <p>server is {import.meta.env.VITE_REST_SERVER_URL}</p>            
-        </div>
-    )
-}
+      <div className="bg-gray-800 text-white text-center py-4">
+        <p>Server is {import.meta.env.VITE_REST_SERVER_URL}</p>
+      </div>
+    );
+  }
+  
 # components/layout/header/Header.css
 .Header {
     display: flex;
@@ -469,25 +515,13 @@ export default function Header() {
 }
 
 # components/layout/header/MuiHeader.tsx
-// MuiHeader.tsx
-import React from 'react';
-import AppBar from '@mui/material/AppBar';
-import Box from '@mui/material/Box';
-import Toolbar from '@mui/material/Toolbar';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import MenuIcon from '@mui/icons-material/Menu';
-import Container from '@mui/material/Container';
-import Avatar from '@mui/material/Avatar';
-import Tooltip from '@mui/material/Tooltip';
-import MenuItem from '@mui/material/MenuItem';
-import { NavLink } from 'react-router-dom';
+import React from "react";
+import { NavLink } from "react-router-dom";
 
 interface Link {
   path: string;
   name: string;
-  type: 'menu' | 'settings';
+  type: "menu" | "settings";
 }
 
 interface ResponsiveAppBarProps {
@@ -495,158 +529,53 @@ interface ResponsiveAppBarProps {
 }
 
 export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => {
-  const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
-  const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-
-  const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElNav(event.currentTarget);
-  };
-
-  const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
-  };
-
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElUser(event.currentTarget);
-  };
-
-  const handleCloseUserMenu = () => {
-    setAnchorElUser(null);
-  };
-
-  // Separate links into menu and settings categories
-  const menuLinks = links.filter((link) => link.type === 'menu');
-  const settingsLinks = links.filter((link) => link.type === 'settings');
+  const menuLinks = links.filter((link) => link.type === "menu");
+  const settingsLinks = links.filter((link) => link.type === "settings");
 
   return (
-    <AppBar position="static">
-      <Container maxWidth="xl">
-        <Toolbar disableGutters>
-          <MenuIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component="a"
-            href="#"
-            sx={{
-              mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
-
-          {/* Mobile menu */}
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
-              onClick={handleOpenNavMenu}
-              color="inherit"
-            >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorElNav}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-              open={Boolean(anchorElNav)}
-              onClose={handleCloseNavMenu}
-              sx={{ display: { xs: 'block', md: 'none' } }}
-            >
-              {menuLinks.map((link) => (
-                <MenuItem key={link.name} onClick={handleCloseNavMenu}>
-                  <NavLink
-                    to={link.path}
-                    style={({ isActive }) => ({
-                      color: isActive ? '#fff' : 'rgba(0, 0, 0, 0.87)',
-                      textDecoration: 'none',
-                      display: 'block',
-                    })}
-                  >
-                    {link.name}
-                  </NavLink>
-                </MenuItem>
-              ))}
-            </Menu>
-          </Box>
-
-          {/* Desktop menu */}
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+    <header className="bg-blue-600 text-white shadow-md">
+      <div className="container mx-auto px-4 flex justify-between items-center h-16">
+        <div className="flex items-center space-x-4">
+          <span className="text-xl font-bold">LOGO</span>
+          <nav className="hidden md:flex space-x-4">
             {menuLinks.map((link) => (
               <NavLink
                 key={link.name}
                 to={link.path}
-                style={({ isActive }) => ({
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
-                  textDecoration: 'none',
-                  margin: '16px 8px',
-                  display: 'block',
-                })}
-                onClick={handleCloseNavMenu}
+                className={({ isActive }) =>
+                  `text-white ${
+                    isActive ? "underline font-semibold" : "hover:opacity-80"
+                  }`
+                }
               >
                 {link.name}
               </NavLink>
             ))}
-          </Box>
-
-          {/* User settings menu */}
-          <Box sx={{ flexGrow: 0 }}>
-            <Tooltip title="Open settings">
-              <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="User Avatar" src="https://cdn.ozari.co.il/beery/noop.jpeg" />
-              </IconButton>
-            </Tooltip>
-            <Menu
-              sx={{ mt: '45px' }}
-              id="menu-appbar"
-              anchorEl={anchorElUser}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              open={Boolean(anchorElUser)}
-              onClose={handleCloseUserMenu}
-            >
-              {settingsLinks.map((link) => (
-                <MenuItem key={link.name} onClick={handleCloseUserMenu}>
-                  <NavLink
-                    to={link.path}
-                    style={({ isActive }) => ({
-                      color: isActive ? '#000' : 'rgba(0, 0, 0, 0.87)',
-                      textDecoration: 'none',
-                      display: 'block',
-                    })}
-                  >
-                    {link.name}
-                  </NavLink>
-                </MenuItem>
-              ))}
-            </Menu>
-          </Box>
-        </Toolbar>
-      </Container>
-    </AppBar>
+          </nav>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="md:hidden">
+            {/* Mobile menu */}
+            <button className="text-white">Menu</button>
+          </div>
+          <div className="hidden md:flex items-center space-x-4">
+            {settingsLinks.map((link) => (
+              <NavLink
+                key={link.name}
+                to={link.path}
+                className={({ isActive }) =>
+                  `text-white ${
+                    isActive ? "underline font-semibold" : "hover:opacity-80"
+                  }`
+                }
+              >
+                {link.name}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </div>
+    </header>
   );
 };
 
@@ -693,7 +622,7 @@ import Followings from '../following/Following';
 import Footer from '../footer/Footer';
 import Header from '../header/Header';
 import Routing from '../routing/Routing';
-import './Layout.css';
+// import './Layout.css';
 import { Navigate } from 'react-router-dom';
 
 // Utility function to check if the user is authenticated
@@ -701,34 +630,45 @@ const isAuthenticated = (): boolean => {
     // Look for the presence of the 'auth' cookie
     return document.cookie.split('; ').some((cookie) => cookie.startsWith('auth='));
 };
-
 export default function Layout() {
     // Redirect to /login if the user is not authenticated
     if (!isAuthenticated()) {
-        return <Navigate to="/login" />;
+      return <Navigate to="/login" />;
     }
-
+  
     return (
-        <div className="Layout">
-            <header>
-                <Header />
-            </header>
-            <aside>
-                <Followings />
-            </aside>
-            <aside>
-                <Folowers />
-            </aside>
-            <main>
-                <Routing />
-            </main>
-            <footer>
-                <Footer />
-            </footer>
-        </div>
+      <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] min-h-screen">
+        {/* Header spans the full width */}
+        <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
+          <Header />
+        </header>
+  
+        {/* First aside section */}
+        <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 overflow-y-auto">
+          <Followings />
+        </aside>
+  
+        {/* Second aside section */}
+        <aside className="col-start-1 row-start-3 bg-white border border-gray-300 p-4 overflow-y-auto">
+          <Folowers />
+        </aside>
+  
+        {/* Main content with a scrollable section */}
+        <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
+          {/* Add scrollable container here */}
+          <div className="max-h-[75vh] overflow-y-auto">
+            <Routing />
+          </div>
+        </main>
+  
+        {/* Footer spans the full width */}
+        <footer className="col-span-2 row-start-4 bg-gray-800 text-white text-center py-4">
+          <Footer />
+        </footer>
+      </div>
     );
-}
-
+  }
+  
 # components/layout/login/login.tsx
 import React from "react";
 import {
@@ -965,10 +905,10 @@ export default function Routing(): JSX.Element {
 
 # components/posts/feed/Feed.tsx
 import { useEffect, useState } from 'react'
-import { Container, Grid, Card, CardContent, Typography } from '@mui/material'
 import PostModel from '../../../models/posts/Post'
 import feed from '../../../services/Feed'
 import './Feed.css'
+
 export default function Feed() {
     const [posts, setPosts] = useState<PostModel[]>([])
 
@@ -978,22 +918,21 @@ export default function Feed() {
             .catch(alert)
     }, [])
 
-    return (<div className='feed-container'>
-        <Container maxWidth="md" style={{ marginTop: '20px' }}>
-            <Grid container spacing={3}>
-                {posts.map(({ id, title }) => (
-                    <Grid item xs={12} sm={6} md={4} key={id}>
-                        <Card>
-                            <CardContent>
-                                <Typography variant="h6" component="div">
-                                    {title}
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid>
-        </Container>
+    return (
+        <div className="feed-container bg-gray-50 min-h-screen py-10">
+            <div className="max-w-4xl mx-auto mt-5 px-4">
+                <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Feed</h1>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {posts.map(({ id, title, body }) => (
+                        <div key={id} className="bg-white shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-300 p-6">
+                            <h2 className="text-lg font-semibold text-gray-800 mb-2">{title}</h2>
+                            <div className="text-sm text-gray-600">
+                                <div className="prose" dangerouslySetInnerHTML={{ __html: body }}></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     )
 }
@@ -1005,14 +944,21 @@ import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import PostDraft from '../../../models/posts/PostDraft';
 import InsertPost from '../../../services/InsertPost';
+import TinyEditor from '../../common/TinyEditor';
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;
 }
 
 export default function NewPost({ onAddPost }: NewPostProps) {
-  const { register, handleSubmit, reset } = useForm<PostDraft>();
+  const { register, handleSubmit, reset, setValue } = useForm<PostDraft>();
   const [loading, setLoading] = useState(false);
+  const [bodyContent, setBodyContent] = useState('');
+
+  const handleEditorChange = (content: string) => {
+    setBodyContent(content);
+    setValue('body', content);
+  };
 
   const onSubmit: SubmitHandler<PostDraft> = async (data) => {
     setLoading(true);
@@ -1020,6 +966,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
       const newPost = await InsertPost(data);
       onAddPost(newPost);
       reset();
+      setBodyContent('');
     } catch (error) {
       console.error('Failed to create post', error);
     } finally {
@@ -1042,10 +989,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Body</label>
-        <textarea
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          {...register('body', { required: 'Body is required' })}
-        />
+        <TinyEditor value={bodyContent} onChange={handleEditorChange} />
       </div>
       <button
         type="submit"
@@ -1422,9 +1366,13 @@ import Post from '../post/Post';
 import NewPost from '../new/NewPost';
 import profileService from '../../../services/Profile';
 import PostModel from '../../../models/posts/Post';
+import useTitle from '../../../hooks/useTitle';
 
 export default function Profile() {
   const [posts, setPosts] = useState<PostModel[]>([]);
+
+
+  useTitle('Profile');
 
   useEffect(() => {
     profileService.getProfile().then(setPosts).catch(console.error);
@@ -1448,16 +1396,34 @@ export default function Profile() {
   );
 }
 
+# hooks/useTitle.ts
+import { useEffect } from "react";
+
+export default function useTitle(title: string) {
+    useEffect(() => {
+        document.title = title;
+    }, [title]);
+}
 # index.css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Base Scrollbar Styles */
+* {
+    @apply scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200;
+  }
+  
+  /* Thumb Hover Effect */
+  *:hover {
+    @apply scrollbar-thumb-gray-500;
+  }
+ 
 # input.css
 
 # main.tsx
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './output.css'
+import './assets/output.css'
 import App from './components/app/App.tsx'
 import * as Sentry from "@sentry/react";
 
@@ -1534,6 +1500,38 @@ export default interface User {
     createdAt: string;
     updatedAt: string;
 }
+# redux/followingSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import User from '../models/users/Users';
+
+interface FollowingState {
+    following: User[];
+}
+
+const initialState: FollowingState = {
+    following: []
+}
+
+export const followingSlice = createSlice({
+    name: 'following',
+    initialState,
+    reducers: {
+        init: (state, action: PayloadAction<User[]>) => {
+        state.following = action.payload;
+        }, 
+        unfollow: (state, action: PayloadAction<string>) => {
+            state.following = state.following.filter(user => user.id !== action.payload);
+        },
+        follow: (state, action: PayloadAction<User>) => {
+            state.following.push(action.payload);
+        }
+    }
+
+})
+
+export const { init, unfollow, follow } = followingSlice.actions
+
+export default followingSlice.reducer
 # services/addComment.ts
 import axios from "axios";
 import CommentDraft from "../models/comment/CommentDraft";
@@ -1579,7 +1577,7 @@ import User from "../models/users/Users";
 class FollowerService {
     async getFollowers(): Promise<User[]> {
         const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
-        console.log(response.data);
+        console.log(`Followers: ${response.data}`);
         return response.data;
     }
 
@@ -1598,7 +1596,7 @@ class FollowerService {
 
     async getFollowing(): Promise<User[]> {
         const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
-        console.log(response.data);
+        console.log(`Following: ${response.data}`);
         return response.data;
     }
 }

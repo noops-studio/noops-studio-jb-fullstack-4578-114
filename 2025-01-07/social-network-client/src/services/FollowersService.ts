@@ -5,7 +5,7 @@ import User from "../models/users/Users";
 class FollowerService {
     async getFollowers(): Promise<User[]> {
         const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
-        console.log(response.data);
+        console.log(`Followers: ${response.data}`);
         return response.data;
     }
 
@@ -23,8 +23,8 @@ class FollowerService {
 
 
     async getFollowing(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
-        console.log(response.data);
+        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
+        console.log(`Following: ${response.data}`);
         return response.data;
     }
 }

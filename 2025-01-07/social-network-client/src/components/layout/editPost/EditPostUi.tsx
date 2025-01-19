@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { Box, Typography, TextField, Button, Modal } from "@mui/material";
-import { Editor } from "@tinymce/tinymce-react";
+import React, { useState } from 'react';
+import TinyEditor from '../../common/TinyEditor';
 
 interface EditPostUiProps {
   title: string;
@@ -23,70 +22,63 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
   };
 
   return (
-    <Box sx={{ maxWidth: 600, margin: "auto", padding: 4 }}>
-      <Button variant="contained" color="primary" onClick={handleOpenModal}>
-        Edit Post
-      </Button>
-
-      <Modal
-        open={isModalOpen}
-        onClose={handleCloseModal}
-        aria-labelledby="edit-post-modal"
-        aria-describedby="edit-post-details"
+    <div className="text-center">
+      <button
+        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        onClick={handleOpenModal}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 600,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-          }}
-        >
-          <Typography variant="h5" gutterBottom>
-            Edit Post
-          </Typography>
+        Edit Post
+      </button>
 
-          {/* Title Input */}
-          <TextField
-            fullWidth
-            label="Title"
-            value={postTitle}
-            onChange={(e) => setPostTitle(e.target.value)}
-            margin="normal"
-            variant="outlined"
-            placeholder="Enter a title for your post"
-          />
+      {isModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-3xl p-6">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Edit Post</h2>
 
-          {/* Post Body Editor */}
-          <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_KEY}
-            value={postBody}
-            init={{
-              height: 300,
-              menubar: false,
-              plugins: ["lists", "link", "emoticons"],
-              toolbar:
-                "undo redo | bold italic | bullist numlist outdent indent | emoticons",
-            }}
-            onEditorChange={(content) => setPostBody(content)}
-          />
+            <div className="mb-6">
+              <label
+                htmlFor="post-title"
+                className="block text-gray-700 text-sm font-medium mb-1"
+              >
+                Title
+              </label>
+              <input
+                id="post-title"
+                type="text"
+                value={postTitle}
+                onChange={(e) => setPostTitle(e.target.value)}
+                placeholder="Enter a title for your post"
+                className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2 text-base focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200 placeholder-gray-400 hover:shadow-md"
+              />
+            </div>
 
-          {/* Action Buttons */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
-            <Button variant="outlined" onClick={handleCloseModal}>
-              Cancel
-            </Button>
-            <Button variant="contained" color="primary" onClick={handleConfirmUpdate}>
-              Save
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-    </Box>
+            <div className="mb-6">
+              <label
+                htmlFor="post-body"
+                className="block text-gray-700 text-sm font-medium mb-1"
+              >
+                Body
+              </label>
+              <TinyEditor value={postBody} onChange={setPostBody} />
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                onClick={handleCloseModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handleConfirmUpdate}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
