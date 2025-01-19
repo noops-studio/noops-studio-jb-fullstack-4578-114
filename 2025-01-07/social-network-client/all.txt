@@ -22,6 +22,58 @@ export default function App(): JSX.Element {
         </div>
     )
 }
+# components/common/Loading.tsx
+import React, { useState } from 'react';
+
+interface LoadingProps {
+  isLoading: boolean;
+  error?: string;
+  onRetry?: () => void;
+}
+
+export default function Loading({ isLoading, error, onRetry }: LoadingProps) {
+  const [showError, setShowError] = useState(!!error);
+
+  const handleCloseError = () => setShowError(false);
+
+  return (
+    <>
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="w-16 h-16 border-4 border-t-blue-500 border-t-4 border-gray-200 rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {showError && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-md p-6">
+            <h2 className="text-2xl font-semibold text-red-600 mb-4 text-center">
+              Error
+            </h2>
+            <p className="text-gray-700 text-center mb-6">{error}</p>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                onClick={handleCloseError}
+              >
+                Close
+              </button>
+              {onRetry && (
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  onClick={onRetry}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 # components/common/setTitle.ts
 import { useEffect } from "react";
 
@@ -612,7 +664,9 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
 .Layout > main {
     grid-column: 2;
     grid-row: 2 / span 2;
-}
+    height: 100%; /* Ensure full height allocation */
+  }
+  
 
 .Layout > * {
     border: 1px dashed lightcoral;
@@ -906,37 +960,55 @@ export default function Routing(): JSX.Element {
 # components/posts/feed/Feed.css
 
 # components/posts/feed/Feed.tsx
-import { useEffect, useState } from 'react'
-import PostModel from '../../../models/posts/Post'
-import feed from '../../../services/Feed'
-import './Feed.css'
+import React, { useEffect, useState } from 'react';
+import PostModel from '../../../models/posts/Post';
+import feed from '../../../services/Feed';
+import './Feed.css';
+import Loading from '../../common/Loading';
 
 export default function Feed() {
-    const [posts, setPosts] = useState<PostModel[]>([])
+  const [posts, setPosts] = useState<PostModel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        feed.getFeed()
-            .then(setPosts)
-            .catch(alert)
-    }, [])
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await feed.getFeed();
+      setPosts(data);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while fetching the feed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div className="feed-container bg-gray-50 min-h-screen py-10">
-            <div className="max-w-4xl mx-auto mt-5 px-4">
-                <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Feed</h1>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                    {posts.map(({ id, title, body }) => (
-                        <div key={id} className="bg-white shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-300 p-6">
-                            <h2 className="text-lg font-semibold text-gray-800 mb-2">{title}</h2>
-                            <div className="text-sm text-gray-600">
-                                <div className="prose" dangerouslySetInnerHTML={{ __html: body }}></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  return (
+    <div className="feed-container bg-gray-50 min-h-screen py-10">
+      <Loading isLoading={loading} error={error} onRetry={fetchData} />
+      <div className="max-w-4xl mx-auto mt-5 px-4">
+        <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Feed</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {posts.map(({ id, title, body }) => (
+            <div
+              key={id}
+              className="bg-white shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-300 p-6"
+            >
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">{title}</h2>
+              <div className="text-sm text-gray-600">
+                <div dangerouslySetInnerHTML={{ __html: body }}></div>
+              </div>
             </div>
+          ))}
         </div>
-    )
+      </div>
+    </div>
+  );
 }
 
 # components/posts/new/NewForm.css
@@ -947,6 +1019,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import PostDraft from '../../../models/posts/PostDraft';
 import InsertPost from '../../../services/InsertPost';
 import TinyEditor from '../../common/TinyEditor';
+import Loading from '../../common/Loading';
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;
@@ -955,6 +1028,7 @@ interface NewPostProps {
 export default function NewPost({ onAddPost }: NewPostProps) {
   const { register, handleSubmit, reset, setValue } = useForm<PostDraft>();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [bodyContent, setBodyContent] = useState('');
 
   const handleEditorChange = (content: string) => {
@@ -964,13 +1038,14 @@ export default function NewPost({ onAddPost }: NewPostProps) {
 
   const onSubmit: SubmitHandler<PostDraft> = async (data) => {
     setLoading(true);
+    setError(null);
     try {
       const newPost = await InsertPost(data);
       onAddPost(newPost);
       reset();
       setBodyContent('');
-    } catch (error) {
-      console.error('Failed to create post', error);
+    } catch (error: any) {
+      setError(error.message || 'Failed to add post.');
     } finally {
       setLoading(false);
     }
@@ -981,6 +1056,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
       onSubmit={handleSubmit(onSubmit)}
       className="bg-white rounded-lg shadow-md p-6 space-y-4"
     >
+      <Loading isLoading={loading} error={error} onRetry={() => handleSubmit(onSubmit)()} />
       <div>
         <label className="block text-sm font-medium text-gray-700">Title</label>
         <input
@@ -1018,63 +1094,72 @@ export default function NewPost({ onAddPost }: NewPostProps) {
   }
   
 # components/posts/post/Post.tsx
-
-
-// Post.tsx
+import React, { useState } from 'react';
 import CommentDraft from '../../../models/comment/CommentDraft';
 import PostModel from '../../../models/posts/Post';
 import InsertComment from '../../../services/addComment';
 import updatePost from '../../../services/updatePost';
 import './Post.css';
 import PostsUi from './PostUi';
+import Loading from '../../common/Loading';
 
 interface PostProps {
-    post: PostModel;
-    onDelete: (postId: string) => Promise<boolean>;
-    onUpdatePost: (postId: string) => Promise<void>;
-    setPosts: React.Dispatch<React.SetStateAction<PostModel[]>>; // Accept setPosts as a prop
+  post: PostModel;
+  onDelete: (postId: string) => Promise<boolean>;
+  onUpdatePost: (postId: string) => Promise<void>;
+  setPosts: React.Dispatch<React.SetStateAction<PostModel[]>>; // Accept setPosts as a prop
 }
 
 export default function Post(props: PostProps): JSX.Element {
-    const { post, onDelete, onUpdatePost, setPosts } = props;
+  const { post, onDelete, onUpdatePost, setPosts } = props;
 
-    const handleAddComment = async (postId: string, comment: string): Promise<void> => {
-        const commentData: CommentDraft = { postId, body: comment };
-        try {
-            const response = await InsertComment(commentData);
-            console.log(`Comment added to post with id ${postId}:`, response);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-            // Update the local post state with the new comment
-            setPosts((prevPosts) =>
-                prevPosts.map((p) =>
-                    p.id === postId
-                        ? { ...p, comments: [...p.comments, response] }
-                        : p
-                )
-            );
-        } catch (e) {
-            console.error(`Failed to add comment to post with id ${postId}:`, e);
-        }
-    };
-
-    return (
-<PostsUi
-  post={post}
-  onDelete={onDelete}
-  onAddComment={handleAddComment}
-  onSavePost={async (updatedPost) => {
+  const handleAddComment = async (postId: string, comment: string): Promise<void> => {
+    const commentData: CommentDraft = { postId, body: comment };
+    setLoading(true);
+    setError(null);
     try {
-      await updatePost(post.id, updatedPost); // Replace with your updatePost logic
+      const response = await InsertComment(commentData);
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p.id === postId ? { ...p, comments: [...p.comments, response] } : p
+        )
+      );
+    } catch (e: any) {
+      setError(e.message || 'Failed to add comment.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePost = async (updatedPost: { title: string; body: string }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await updatePost(post.id, updatedPost);
       setPosts((prevPosts) =>
         prevPosts.map((p) => (p.id === post.id ? { ...p, ...updatedPost } : p))
       );
-    } catch (error) {
-      console.error("Error updating post:", error);
+    } catch (error: any) {
+      setError(error.message || 'Failed to update post.');
+    } finally {
+      setLoading(false);
     }
-  }}
-/>
+  };
 
-    );
+  return (
+    <>
+      <Loading isLoading={loading} error={error} onRetry={() => {}} />
+      <PostsUi
+        post={post}
+        onDelete={onDelete}
+        onAddComment={handleAddComment}
+        onSavePost={handleSavePost}
+      />
+    </>
+  );
 }
 
 # components/posts/post/PostsUi.css
@@ -1348,36 +1433,52 @@ export default function PostsUi(props: PostsUiProps): JSX.Element {
 
 # components/posts/profile/Profile.css
 .posts-container {
-    max-height: 570px ;
+    height: calc(100vh - 200px); /* Adjust based on your header/footer height */
     overflow-y: auto;
     padding: 16px;
     scrollbar-width: thin;
-}
-
-.posts-container::-webkit-scrollbar {
+  }
+  
+  .posts-container::-webkit-scrollbar {
     width: 6px;
-}
-
-.posts-container::-webkit-scrollbar-thumb {
+  }
+  
+  .posts-container::-webkit-scrollbar-thumb {
     background-color: #888;
     border-radius: 3px;
-}
+  }
+  
 # components/posts/profile/Profile.tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Post from '../post/Post';
 import NewPost from '../new/NewPost';
 import profileService from '../../../services/Profile';
 import PostModel from '../../../models/posts/Post';
 import useTitle from '../../../hooks/useTitle';
+import Loading from '../../common/Loading';
 
 export default function Profile() {
   const [posts, setPosts] = useState<PostModel[]>([]);
-
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useTitle('Profile');
 
+  const fetchPosts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await profileService.getProfile();
+      setPosts(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch posts.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    profileService.getProfile().then(setPosts).catch(console.error);
+    fetchPosts();
   }, []);
 
   const handleAddPost = (newPost: PostModel) => {
@@ -1385,13 +1486,15 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="flex flex-col h-full bg-gray-100 p-4">
+      <Loading isLoading={loading} error={error} onRetry={fetchPosts} />
+      <div className="posts-container flex-grow mt-6">
         <NewPost onAddPost={handleAddPost} />
-        <div className="mt-6 grid gap-4">
-          {posts.map((post) => (
-            <Post key={post.id} post={post} />
-          ))}
+        <div className="posts-container flex-grow mt-6">
+          {!loading &&
+            posts.map((post) => (
+              <Post key={post.id} post={post} />
+            ))}
         </div>
       </div>
     </div>
@@ -1606,36 +1709,6 @@ class FollowerService {
 const followerService = new FollowerService();
 console.log(followerService);
 export default followerService;
-# services/Following.ts
-import axios from "axios";
-// import Post from "../models/posts/Post";
-import User from "../models/users/Users";
-
-class Following {
-    async getFollowing(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
-        return response.data;
-    }
-}
-
-const following = new Following();
-console.log(following);
-export default following;
-# services/FollowingService.ts
-import axios from "axios";
-// import userFollower from "../models/userFollower/UserFollower";
-import User from "../models/users/Users";
-
-class FollowingService {
-    async getFollowers(): Promise<User[]> {
-        const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
-        return response.data;
-    }
-}
-
-const followingService = new FollowingService();
-console.log(followingService);
-export default followingService;
 # services/GetSinglePost.ts
 import axios from "axios";
 import Post from "../models/posts/Post";

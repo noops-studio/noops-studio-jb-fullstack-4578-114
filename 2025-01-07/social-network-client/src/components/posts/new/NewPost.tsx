@@ -3,6 +3,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import PostDraft from '../../../models/posts/PostDraft';
 import InsertPost from '../../../services/InsertPost';
 import TinyEditor from '../../common/TinyEditor';
+import Loading from '../../common/Loading';
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;
@@ -11,6 +12,7 @@ interface NewPostProps {
 export default function NewPost({ onAddPost }: NewPostProps) {
   const { register, handleSubmit, reset, setValue } = useForm<PostDraft>();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [bodyContent, setBodyContent] = useState('');
 
   const handleEditorChange = (content: string) => {
@@ -20,13 +22,14 @@ export default function NewPost({ onAddPost }: NewPostProps) {
 
   const onSubmit: SubmitHandler<PostDraft> = async (data) => {
     setLoading(true);
+    setError(null);
     try {
       const newPost = await InsertPost(data);
       onAddPost(newPost);
       reset();
       setBodyContent('');
-    } catch (error) {
-      console.error('Failed to create post', error);
+    } catch (error: any) {
+      setError(error.message || 'Failed to add post.');
     } finally {
       setLoading(false);
     }
@@ -37,6 +40,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
       onSubmit={handleSubmit(onSubmit)}
       className="bg-white rounded-lg shadow-md p-6 space-y-4"
     >
+      <Loading isLoading={loading} error={error} onRetry={() => handleSubmit(onSubmit)()} />
       <div>
         <label className="block text-sm font-medium text-gray-700">Title</label>
         <input

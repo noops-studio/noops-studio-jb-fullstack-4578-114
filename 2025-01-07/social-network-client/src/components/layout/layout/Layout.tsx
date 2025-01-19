@@ -18,35 +18,29 @@ export default function Layout() {
     }
   
     return (
-      <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] min-h-screen">
-        {/* Header spans the full width */}
-        <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
-          <Header />
-        </header>
-  
-        {/* First aside section */}
-        <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 overflow-y-auto">
-          <Followings />
-        </aside>
-  
-        {/* Second aside section */}
-        <aside className="col-start-1 row-start-3 bg-white border border-gray-300 p-4 overflow-y-auto">
-          <Folowers />
-        </aside>
-  
-        {/* Main content with a scrollable section */}
-        <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
-          {/* Add scrollable container here */}
-          <div className="max-h-[75vh] overflow-y-auto">
-            <Routing />
-          </div>
-        </main>
-  
-        {/* Footer spans the full width */}
-        <footer className="col-span-2 row-start-4 bg-gray-800 text-white text-center py-4">
-          <Footer />
-        </footer>
-      </div>
+      <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
+  <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
+    <Header />
+  </header>
+
+  <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 overflow-y-auto">
+    <Followings />
+  </aside>
+
+  <aside className="col-start-1 row-start-3 bg-white border border-gray-300 p-4 overflow-y-auto">
+    <Folowers />
+  </aside>
+
+  <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
+    <div className="h-full overflow-y-auto">
+      <Routing />
+    </div>
+  </main>
+
+  <footer className="col-span-2 row-start-4 bg-gray-800 text-white text-center py-4">
+    <Footer />
+  </footer>
+</div>
     );
   }
   

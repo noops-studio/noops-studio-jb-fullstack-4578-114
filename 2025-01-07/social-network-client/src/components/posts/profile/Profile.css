@@ -1,15 +1,17 @@
 .posts-container {
-    max-height: 570px ;
+    flex-grow: 1; /* Fill available space */
+    height: 100%; /* Allow the container to take up the full height */
     overflow-y: auto;
     padding: 16px;
-    scrollbar-width: thin;
-}
-
-.posts-container::-webkit-scrollbar {
+  }
+  
+  
+  .posts-container::-webkit-scrollbar {
     width: 6px;
-}
-
-.posts-container::-webkit-scrollbar-thumb {
+  }
+  
+  .posts-container::-webkit-scrollbar-thumb {
     background-color: #888;
     border-radius: 3px;
-}
+  }
+  

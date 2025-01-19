@@ -1,9 +1,9 @@
 .Layout {
     display: grid;
+    grid-template-rows: auto 1fr auto; /* Ensure flexible row height */
     grid-template-columns: 1fr 3fr;
-    grid-template-rows: 1fr 3fr 3fr 1fr;
-    height: 100%;
-}
+    height: 100vh; /* Ensure the layout spans the full viewport */
+  }
 
 .Layout > header {
     grid-column: 1 / span 2;
@@ -25,10 +25,14 @@
     grid-row: 3;
 }
 
-.Layout > main {
-    grid-column: 2;
-    grid-row: 2 / span 2;
-}
+
+  
+  .Layout > main {
+    height: 100%; /* Inherit full height from the parent */
+    overflow-y: auto; /* Allow scrolling for the content */
+  }
+  
+  
 
 .Layout > * {
     border: 1px dashed lightcoral;
