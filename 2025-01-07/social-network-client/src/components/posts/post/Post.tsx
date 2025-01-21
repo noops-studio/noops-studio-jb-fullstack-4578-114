@@ -1,3 +1,4 @@
+// components/posts/post/Post.tsx
 import React, { useState } from "react";
 import { useAppDispatch } from "../../../redux/hooks";
 import PostModel from "../../../models/posts/Post";
@@ -7,39 +8,40 @@ import ProfileService from "../../../services/auth-aware/Profile";
 
 interface PostProps {
   post: PostModel;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export default function Post({ post }: PostProps): JSX.Element {
+export default function Post({ post, onDelete }: PostProps): JSX.Element {
   const dispatch = useAppDispatch();
-  const profileService = useService(ProfileService); // Use the service here
+  const profileService = useService(ProfileService);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(post.title);
   const [newBody, setNewBody] = useState(post.body);
 
-  const profilePictureUrl = "https://cdn.ozari.co.il/beery/noop.jpeg"; // Fixed profile picture URL
+  const profilePictureUrl = "https://cdn.ozari.co.il/beery/noop.jpeg";
 
-  // Handle delete
   const handleDelete = async () => {
     try {
-      await profileService.removePost(post.id); // Direct service call
-      dispatch({ type: "profile/deletePost", payload: post.id }); // Update Redux state
+      await onDelete(post.id);
       setIsDeleteDialogOpen(false);
     } catch (error) {
-      console.error("Failed to delete post:", error.message);
+      console.error("Failed to delete post:", error);
     }
   };
 
-  // Handle update
   const handleUpdate = async () => {
     if (newTitle.trim() && newBody.trim()) {
       try {
-        const updatedPost = await profileService.updatePost(post.id, { title: newTitle, body: newBody });
-        dispatch({ type: "profile/updatePost", payload: { id: post.id, updatedPost } }); // Update Redux state
+        const updatedPost = await profileService.updatePost(post.id, {
+          title: newTitle,
+          body: newBody,
+        });
+        dispatch({ type: "profile/updatePost", payload: updatedPost });
         setIsEditing(false);
       } catch (error) {
-        console.error("Failed to update post:", error.message);
+        console.error("Failed to update post:", error);
       }
     }
   };

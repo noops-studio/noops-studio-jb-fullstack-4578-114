@@ -11,11 +11,19 @@ import './Profile.css';
 export default function Profile() {
   useTitle('Profile');
   const { posts, loading, error } = useAppSelector((state) => state.profile);
-  const { fetchPosts, createPost } = useProfile();
+  const { fetchPosts, createPost, deletePost } = useProfile();
 
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePost(id);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+    }
+  };
 
   if (loading) {
     return <Loading isLoading={true} />;
@@ -31,7 +39,11 @@ export default function Profile() {
       <div className="posts-container flex-grow mt-6">
         {Array.isArray(posts) && posts.length > 0 ? (
           posts.map((post) => (
-            <Post key={post.id} post={post} />
+            <Post 
+              key={post.id} 
+              post={post}
+              onDelete={handleDelete}
+            />
           ))
         ) : (
           <div className="text-center text-gray-500 mt-4">

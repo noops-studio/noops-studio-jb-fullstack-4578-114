@@ -1,3 +1,4 @@
+// redux/slices/profileSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import Post from '../../models/posts/Post';
 import Comment from '../../models/comment/Comments';
@@ -28,7 +29,7 @@ const profileSlice = createSlice({
       state.posts = action.payload;
     },
     addPost: (state, action: PayloadAction<Post>) => {
-      state.posts.unshift(action.payload);
+      state.posts = [action.payload, ...state.posts];
     },
     updatePost: (state, action: PayloadAction<Post>) => {
       const index = state.posts.findIndex(post => post.id === action.payload.id);
@@ -46,24 +47,7 @@ const profileSlice = createSlice({
         if (!post.comments) {
           post.comments = [];
         }
-        post.comments.push(comment);
-      }
-    },
-    updateComment: (state, action: PayloadAction<{ postId: string; comment: Comment }>) => {
-      const { postId, comment } = action.payload;
-      const post = state.posts.find(p => p.id === postId);
-      if (post && post.comments) {
-        const commentIndex = post.comments.findIndex(c => c.id === comment.id);
-        if (commentIndex !== -1) {
-          post.comments[commentIndex] = comment;
-        }
-      }
-    },
-    removeComment: (state, action: PayloadAction<{ postId: string; commentId: string }>) => {
-      const { postId, commentId } = action.payload;
-      const post = state.posts.find(p => p.id === postId);
-      if (post && post.comments) {
-        post.comments = post.comments.filter(c => c.id !== commentId);
+        post.comments = [...post.comments, comment];
       }
     }
   }
@@ -76,9 +60,7 @@ export const {
   addPost,
   updatePost,
   removePost,
-  addComment,
-  updateComment,
-  removeComment
+  addComment
 } = profileSlice.actions;
 
 export default profileSlice.reducer;

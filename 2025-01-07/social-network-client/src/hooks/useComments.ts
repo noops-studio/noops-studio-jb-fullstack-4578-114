@@ -9,7 +9,7 @@ export const useComments = () => {
 
   const addComment = async (postId: string, body: string) => {
     try {
-      const comment = await CommentService.addComment(postId, body);
+      const comment = await commentService.addComment(postId, body);
       dispatch(addCommentAction({ postId, comment }));
       return comment;
     } catch (error) {

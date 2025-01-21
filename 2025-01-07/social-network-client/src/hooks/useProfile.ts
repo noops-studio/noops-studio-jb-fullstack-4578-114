@@ -1,3 +1,4 @@
+// hooks/useProfile.ts
 import { useAppDispatch } from '../redux/hooks';
 import { setLoading, setError, setPosts, addPost, updatePost, removePost, addComment } from '../redux/slices/profileSlice';
 import Profile from '../services/auth-aware/Profile';
@@ -13,8 +14,12 @@ export const useProfile = () => {
     try {
       const posts = await profileService.getProfile();
       dispatch(setPosts(posts));
-    } catch (error: any) {
-      dispatch(setError(error.message));
+    } catch (error) {
+      if (error instanceof Error) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     } finally {
       dispatch(setLoading(false));
     }
@@ -25,8 +30,10 @@ export const useProfile = () => {
     try {
       const post = await profileService.addPost(newPost);
       dispatch(addPost(post));
+      return post;
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     } finally {
       dispatch(setLoading(false));
     }
@@ -37,8 +44,10 @@ export const useProfile = () => {
     try {
       const post = await profileService.updatePost(id, updatedPost);
       dispatch(updatePost(post));
+      return post;
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     } finally {
       dispatch(setLoading(false));
     }
@@ -51,6 +60,7 @@ export const useProfile = () => {
       dispatch(removePost(id));
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     } finally {
       dispatch(setLoading(false));
     }
@@ -60,8 +70,10 @@ export const useProfile = () => {
     try {
       const comment = await profileService.addComment(postId, body);
       dispatch(addComment({ postId, comment }));
+      return comment;
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     }
   };
 
