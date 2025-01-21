@@ -1,3 +1,5 @@
+
+// redux/slices/followingSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import User from '../../models/users/Users';
 
@@ -13,20 +15,17 @@ const followingSlice = createSlice({
   name: 'following',
   initialState,
   reducers: {
-    init: (state, action: PayloadAction<User[]>) => ({
-      ...state,
-      following: action.payload,
-    }),
-    unfollow: (state, action: PayloadAction<string>) => ({
-      ...state,
-      following: state.following.filter(user => user.id !== action.payload),
-    }),
-    follow: (state, action: PayloadAction<User>) => ({
-      ...state,
-      following: [...state.following, action.payload],
-    }),
-  },
+    setFollowing: (state, action: PayloadAction<User[]>) => {
+      state.following = action.payload;
+    },
+    removeFollowing: (state, action: PayloadAction<string>) => {
+      state.following = state.following.filter(user => user.id !== action.payload);
+    },
+    addFollowing: (state, action: PayloadAction<User>) => {
+      state.following.push(action.payload);
+    }
+  }
 });
 
-export const { init, unfollow, follow } = followingSlice.actions;
+export const { setFollowing, removeFollowing, addFollowing } = followingSlice.actions;
 export default followingSlice.reducer;

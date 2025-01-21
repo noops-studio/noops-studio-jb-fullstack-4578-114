@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import Post from '../../models/posts/Post';
-import PostDraft from '../../models/posts/PostDraft';
+import Comment from '../../models/comment/Comments';
 
 interface ProfileState {
   posts: Post[];
@@ -18,44 +18,49 @@ const profileSlice = createSlice({
   name: 'profile',
   initialState,
   reducers: {
-    fetchStart: (state) => ({
-      ...state,
-      loading: true,
-      error: null,
-    }),
-    fetchSuccess: (state, action: PayloadAction<Post[]>) => ({
-      ...state,
-      posts: action.payload,
-      loading: false,
-    }),
-    fetchFailure: (state, action: PayloadAction<string>) => ({
-      ...state,
-      loading: false,
-      error: action.payload,
-    }),
-    addPost: (state, action: PayloadAction<Post>) => ({
-      ...state,
-      posts: [...state.posts, action.payload],
-    }),
-    updatePost: (state, action: PayloadAction<{ id: string; updatedPost: Post }>) => ({
-      ...state,
-      posts: state.posts.map(post =>
-        post.id === action.payload.id ? { ...post, ...action.payload.updatedPost } : post
-      ),
-    }),
-    deletePost: (state, action: PayloadAction<string>) => ({
-      ...state,
-      posts: state.posts.filter(post => post.id !== action.payload),
-    }),
-  },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+    },
+    setPosts: (state, action: PayloadAction<Post[]>) => {
+      state.posts = action.payload;
+    },
+    addPost: (state, action: PayloadAction<Post>) => {
+      state.posts.unshift(action.payload);
+    },
+    updatePost: (state, action: PayloadAction<Post>) => {
+      const index = state.posts.findIndex(post => post.id === action.payload.id);
+      if (index !== -1) {
+        state.posts[index] = action.payload;
+      }
+    },
+    removePost: (state, action: PayloadAction<string>) => {
+      state.posts = state.posts.filter(post => post.id !== action.payload);
+    },
+    addComment: (state, action: PayloadAction<{ postId: string; comment: Comment }>) => {
+      const { postId, comment } = action.payload;
+      const post = state.posts.find(p => p.id === postId);
+      if (post) {
+        if (!post.comments) {
+          post.comments = [];
+        }
+        post.comments.push(comment);
+      }
+    }
+  }
 });
 
 export const {
-  fetchStart,
-  fetchSuccess,
-  fetchFailure,
+  setLoading,
+  setError,
+  setPosts,
   addPost,
   updatePost,
-  deletePost,
+  removePost,
+  addComment
 } = profileSlice.actions;
+
 export default profileSlice.reducer;
+

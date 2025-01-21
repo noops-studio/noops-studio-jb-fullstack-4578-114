@@ -1,17 +1,17 @@
-import { configureStore } from "@reduxjs/toolkit";
-import followingSlice from "./followingSlice";
-import followersSlice from "./followersSlice";
-import profileSlice from "./profileSlice";
+import { configureStore } from '@reduxjs/toolkit';
+import profileReducer from './slices/profileSlice';
+import followersReducer from './slices/followersSlice';
+import followingReducer from './slices/followingSlice';
 
 const store = configureStore({
   reducer: {
-    following: followingSlice,
-    followers: followersSlice,
-    profile: profileSlice, // Add the profile slice here
+    profile: profileReducer,
+    followers: followersReducer,
+    following: followingReducer,
   },
 });
 
-export default store;
-
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+export default store;

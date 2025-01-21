@@ -1,30 +1,24 @@
+// components/layout/following/Following.tsx
 import { useEffect } from "react";
 import "./Following.css";
 import FollowingUi from "./FollowingUi";
-import followerService from "../../../services/auth-aware/FollowersService";
-import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { init, unfollow } from "../../../redux/followingSlice";
+import { useAppSelector } from "../../../redux/hooks";
+import { useFollowing } from "../../../hooks/useFollowing";
+import { useFollowers } from "../../../hooks/useFollowers";
 
-export default function Followings(): JSX.Element {
+export default function Following(): JSX.Element {
   const following = useAppSelector((state) => state.following.following);
-  const dispatch = useAppDispatch();
+  const { fetchFollowing } = useFollowing();
+  const { unfollow } = useFollowers();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const followingData = await followerService.getFollowing();
-        dispatch(init(followingData));
-      } catch (error) {
-        console.error("Failed to fetch following list:", error);
-      }
-    };
-    fetchData();
-  }, [dispatch]);
+    fetchFollowing();
+  }, []);
 
   const handleUnfollow = async (userId: string) => {
     try {
-      await followerService.unfollowUser(userId);
-      dispatch(unfollow(userId)); // Update Redux store
+      await unfollow(userId);
+      // The state will be automatically updated through Redux
     } catch (error) {
       console.error("Failed to unfollow user:", error);
     }
@@ -35,7 +29,7 @@ export default function Followings(): JSX.Element {
       <h1 className="text-lg font-semibold mb-4">Following List</h1>
       <FollowingUi
         following={following}
-        onUnfollow={handleUnfollow} // Pass handler to UI
+        onUnfollow={handleUnfollow}
       />
     </div>
   );

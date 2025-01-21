@@ -10,19 +10,54 @@ import { Provider } from "react-redux";
 import Routing from "../layout/routing/Routing";
 import store from "../../redux/store";
 import "./App.css";
+import Auth from "../auth/Auth";
 
 export default function App(): JSX.Element {
   return (
     <div className="App">
-      <Provider store={store}>
-        <BrowserRouter>
+      <BrowserRouter>
+        <Provider store={store}>
+          <Auth>
           <Routing />
-        </BrowserRouter>
-      </Provider>
+          </Auth>
+        </Provider>
+      </BrowserRouter>
     </div>
   );
 }
 
+# components/auth/Auth.tsx
+import { createContext, PropsWithChildren, useState } from "react";
+
+
+interface AuthContextInterface {
+    jwt: string;
+    newLogin: React.Dispatch<React.SetStateAction<string>>;
+    
+}
+
+export const AuthContext = createContext<AuthContextInterface | null>(null);
+
+
+export default function Auth(props:PropsWithChildren): JSX.Element {
+
+    const JWT_KEY = 'jwt';
+
+    const [jwt, setJwt] = useState<string>(localStorage.getItem(JWT_KEY) ||'');
+
+function newLogin(jwt: string) {
+    localStorage.setItem(JWT_KEY, jwt);
+    setJwt(jwt);
+}
+
+const {children} = props;
+
+    return(
+        <AuthContext.Provider value={{jwt, newLogin}}>
+            {children}
+        </AuthContext.Provider>
+    )
+}
 # components/common/Loading.tsx
 import React, { useState } from 'react';
 
@@ -285,7 +320,7 @@ export default function EditPostUi({ title, body, postId, onSave }: EditPostUiPr
 # components/layout/follow/FollowButton.tsx
 import React, { useState } from "react";
 import { Button } from "@mui/material";
-import followerService from "../../../services/FollowersService";
+import followerService from "../../../services/auth-aware/FollowersService";
 
 interface FollowButtonProps {
   userId: string;
@@ -332,7 +367,7 @@ export default FollowButton;
 import { useEffect } from "react";
 import "./Following.css";
 import FollowingUi from "./FollowingUi";
-import followerService from "../../../services/FollowersService";
+import followerService from "../../../services/auth-aware/FollowersService";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { init, unfollow } from "../../../redux/followingSlice";
 
@@ -389,7 +424,7 @@ const FollowingUi: React.FC<FollowingProps> = ({ following, onUnfollow }) => {
           className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
         >
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-lg">
               {name[0].toUpperCase()}
             </div>
             <span className="text-gray-800 font-medium text-sm">{name}</span>
@@ -418,7 +453,7 @@ export default FollowingUi;
 import { useEffect } from "react";
 import "./Folowers.css";
 import FollowersUi from "./FolowersUi";
-import followerService from "../../../services/FollowersService";
+import followerService from "../../../services/auth-aware/FollowersService";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { init as initFollowers } from "../../../redux/followersSlice";
 import { init as initFollowing } from "../../../redux/followingSlice";
@@ -497,7 +532,7 @@ const FollowersUi: React.FC<FollowersProps> = ({ followers, onFollowUnfollow }) 
           className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
         >
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-purple-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-lg">
               {name ? name[0].toUpperCase() : "?"}
             </div>
             <span className="text-gray-800 font-medium text-sm">{name || "Unknown"}</span>
@@ -586,23 +621,35 @@ export default function Footer() {
 
 # components/layout/header/Header.tsx
 // Header.tsx
-import React from 'react';
+import useUsername from '../../../hooks/useUsername';
 import { ResponsiveAppBar } from './MuiHeader';
-import { patch } from '@mui/material';
 
 export default function Header() {
   const links = [
-    { path: '/profile', name: 'Profile' ,type: 'menu'},
-    { path: '/feed', name: 'Feed' ,type: 'menu' },
-    {path: '/logout', name: 'logout', type: 'settings' },
+    { path: '/profile', name: 'Profile', type: 'menu' as const },
+    { path: '/feed', name: 'Feed', type: 'menu' as const },
+    { path: '/logout', name: 'Logout', type: 'settings' as const },
+    { path: '/logouta', name: 'Logouta', type: 'settings' as const },
   ];
 
-  return <ResponsiveAppBar links={links} />;
+  const profilePicUrl = "https://cdn.ozari.co.il/beery/noop.jpeg"; // Replace with dynamic URL
+  const username = useUsername();
+
+  return (
+    <ResponsiveAppBar
+      links={links}
+      profilePicUrl={profilePicUrl}
+      username={username}
+    />
+  );
 }
 
 # components/layout/header/MuiHeader.tsx
-import React from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { AuthContext } from "../../auth/Auth";
+import { jwtDecode } from "jwt-decode";
+import User from "../../../models/users/Users";
 
 interface Link {
   path: string;
@@ -612,11 +659,20 @@ interface Link {
 
 interface ResponsiveAppBarProps {
   links: Link[];
+  profilePicUrl: string;
+  username: string;
 }
 
-export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => {
+export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({
+  links,
+  profilePicUrl,
+  username,
+}) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const menuLinks = links.filter((link) => link.type === "menu");
   const settingsLinks = links.filter((link) => link.type === "settings");
+
+  const toggleDropdown = () => setDropdownOpen((prev) => !prev);
 
   return (
     <header className="bg-blue-600 text-white shadow-md">
@@ -640,24 +696,31 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
           </nav>
         </div>
         <div className="flex items-center space-x-4">
-          <div className="md:hidden">
-            {/* Mobile menu */}
-            <button className="text-white">Menu</button>
-          </div>
-          <div className="hidden md:flex items-center space-x-4">
-            {settingsLinks.map((link) => (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                className={({ isActive }) =>
-                  `text-white ${
-                    isActive ? "underline font-semibold" : "hover:opacity-80"
-                  }`
-                }
-              >
-                {link.name}
-              </NavLink>
-            ))}
+          <div className="relative">
+            <button
+              className="flex items-center space-x-2"
+              onClick={toggleDropdown}
+            >
+              <img
+                src={profilePicUrl}
+                alt={`${username} profile`}
+                className="w-8 h-8 rounded-full border"
+              />
+              <span>{username}</span>
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 bg-white text-black shadow-lg rounded-md">
+                {settingsLinks.map((link) => (
+                  <NavLink
+                    key={link.name}
+                    to={link.path}
+                    className="block px-4 py-2 hover:bg-gray-100"
+                  >
+                    {link.name}
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -708,27 +771,17 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({ links }) => 
 
 # components/layout/layout/Layout.tsx
 // components/layout/layout/Layout.tsx
-import React from "react";
+import React, { useContext } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import Folowers from "../folowers/Folowers";
 import Followings from "../following/Following";
 import Footer from "../footer/Footer";
 import Header from "../header/Header";
 import LoginPage from "../login/login";
+import { AuthContext } from "../../auth/Auth";
 
 // Utility function to check if the user is authenticated
 
-let isLoggedIn: boolean = false;
-
-const isAuthenticated = (): boolean => {
-  const foundAuthCookie = document.cookie
-    .split("; ")
-    .some((cookie) => cookie.startsWith("auth="));
-
-  isLoggedIn = foundAuthCookie;
-  return foundAuthCookie;
-};
-console.log(isAuthenticated());
 
 export default function Layout() {
   // Redirect to /login if the user is not authenticated
@@ -736,15 +789,19 @@ export default function Layout() {
   //   return <Navigate to="/login" replace />;
   // }
 
+  const {jwt} = useContext(AuthContext)!;
+const isAuthenticated: boolean = !!jwt;
+
+
   return (
     <div>
-      {!isLoggedIn && (
+      {!isAuthenticated && (
         <>
           <LoginPage />
         </>
       )}
 
-      {isLoggedIn && (
+      {isAuthenticated && (
         <>
           <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
             <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
@@ -777,28 +834,35 @@ export default function Layout() {
 }
 
 # components/layout/login/login.tsx
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import auth from "../../../services/auth";
+import { AuthContext } from "../../auth/Auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  const handleSubmit = async (event) => {
+  const { newLogin } = useContext(AuthContext)!;
+
+  const handleSubmit = async (event: { preventDefault: () => void; currentTarget: HTMLFormElement | undefined; }) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const username = data.get("username");
     const password = data.get("password");
 
+    getJwt(username, password);
+  };
+  async function getJwt(username, password) {
     try {
-      const jwt = await auth.login({ username, password });
-      document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
+      const userJwt = await auth.login({ username, password });
+      newLogin(userJwt)!;
+      console.log(userJwt);
+      document.cookie = `auth=${userJwt}; path=/; secure; SameSite=Strict`;
       navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
     }
-  };
-
+  }
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6 bg-white shadow-md rounded-md">
@@ -818,6 +882,7 @@ export default function LoginPage() {
               required
               autoComplete="username"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              defaultValue={"bob000"}
             />
           </div>
           <div>
@@ -834,6 +899,7 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              defaultValue={"123456"}
             />
           </div>
           <button
@@ -1877,6 +1943,26 @@ export default function Profile() {
     </div>
   );
 }
+# hooks/useService.ts
+import axios from "axios";
+import { useContext, useMemo } from "react";
+import { AuthContext } from "../components/auth/Auth";
+
+export default function useService<T>(ServiceClass: new (axiosInstance: any) => T): T {
+  const { jwt } = useContext(AuthContext)!;
+
+  const axiosInstance = useMemo(() => {
+    return axios.create({
+      baseURL: import.meta.env.VITE_REST_SERVER_URL,
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+  }, [jwt]);
+
+  return useMemo(() => new ServiceClass(axiosInstance), [ServiceClass, axiosInstance]);
+}
+
 # hooks/useTitle.ts
 import { useEffect } from "react";
 
@@ -1885,6 +1971,24 @@ export default function useTitle(title: string) {
         document.title = title;
     }, [title]);
 }
+# hooks/useUsername.ts
+import { jwtDecode } from "jwt-decode";
+import { useContext, useMemo } from "react";
+import { AuthContext } from "../components/auth/Auth";
+import User from "../models/users/Users";
+
+export default function useUsername() {
+    const { jwt } = useContext(AuthContext)!;
+    // const {name} = jwtDecode<User>(jwt);
+  
+  const name = useMemo(() => {
+    const {name} = jwtDecode<User>(jwt);
+    return name;
+  }, [jwt]);
+    
+        return name;
+}
+
 # index.css
 @tailwind base;
 @tailwind components;
@@ -2218,6 +2322,33 @@ const profileSlice = createSlice({
 });
 
 export default profileSlice.reducer;
+# redux/slices/authSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+interface AuthState {
+  isAuthenticated: boolean;
+}
+
+const initialState: AuthState = {
+  isAuthenticated: false,
+};
+
+export const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    login: (state) => {
+      state.isAuthenticated = true;
+    },
+    logout: (state) => {
+      state.isAuthenticated = false;
+    },
+  },
+});
+
+export const { login, logout } = authSlice.actions;
+export default authSlice.reducer;
+
 # redux/slices/followersSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import User from '../../models/users/Users';
@@ -2423,35 +2554,17 @@ export default async function InsertComment(commentData: CommentDraft): Promise<
 
 }
 
-# services/auth.ts
-import axios from "axios";
-import Login from "../models/users/Login";
+# services/auth-aware/AuthAware.ts
+import { AxiosInstance } from "axios";
 
-class Auth {
-    async login(login: Login) {
-        const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, login);
-    return response.data.jwt;
+export default abstract class AuthAware {
+    constructor(public axiosInstance: AxiosInstance) {
+        
     }
 }
-const auth = new Auth();
-export default auth;
-# services/Feed.ts
+# services/auth-aware/FollowersService.ts
 import axios from "axios";
-import Post from "../models/posts/Post";
-
-class Feed {
-    async getFeed(): Promise<Post[]> {
-        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/feed`);
-        return response.data;
-    }
-}
-
-const feed = new Feed();
-console.log(feed);
-export default feed;
-# services/FollowersService.ts
-import axios from "axios";
-import User from "../models/users/Users";
+import User from "../../models/users/Users";
 
 class FollowerService {
   async getFollowers(): Promise<User[]> {
@@ -2483,6 +2596,103 @@ class FollowerService {
 const followerService = new FollowerService();
 export default followerService;
 
+# services/auth-aware/Profile.ts
+// services/auth-aware/Profile.ts
+import axios from "axios";
+import Post from "../../models/posts/Post";
+import PostDraft from "../../models/posts/PostDraft";
+import Comment from "../../models/comment/Comments";
+import AuthAware from "./AuthAware";
+
+export default class Profile extends AuthAware {
+    private baseUrl = import.meta.env.VITE_REST_SERVER_URL_SAFE;
+
+    async getProfile(): Promise<Post[]> {
+        try {
+            console.log("Fetching posts from:", `${this.baseUrl}/posts`);
+            const response = await this.axiosInstance.get<Post[]>(`${this.baseUrl}/posts`);
+            console.log("API Response:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching posts:", error);
+            throw error;
+        }
+    }
+
+    async addPost(post: PostDraft): Promise<Post> {
+        try {
+            const response = await this.axiosInstance.post(
+                `${this.baseUrl}/posts`,
+                post
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error adding post:", error);
+            throw error;
+        }
+    }
+
+    async updatePost(id: string, post: PostDraft): Promise<Post> {
+        try {
+            const response = await this.axiosInstance.patch(
+                `${this.baseUrl}/posts/${id}`,
+                post
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error updating post:", error);
+            throw error;
+        }
+    }
+
+    async removePost(id: string): Promise<void> {
+        try {
+            await this.axiosInstance.delete(`${this.baseUrl}/posts/${id}`);
+        } catch (error) {
+            console.error("Error removing post:", error);
+            throw error;
+        }
+    }
+
+    async addComment(postId: string, body: string): Promise<Comment> {
+        try {
+            const response = await this.axiosInstance.post(
+                `${this.baseUrl}/comments/${postId}`,
+                { body }
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error adding comment:", error);
+            throw error;
+        }
+    }
+}
+# services/auth.ts
+import axios from "axios";
+import Login from "../models/users/Login";
+
+class Auth {
+    async login(login: Login) {
+        const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, login);
+    return response.data.jwt;
+    }
+}
+const auth = new Auth();
+export default auth;
+# services/Feed.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+
+class Feed {
+    async getFeed(): Promise<Post[]> {
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/feed`);
+        return response.data;
+    }
+}
+
+const feed = new Feed();
+console.log(feed);
+export default feed;
 # services/GetSinglePost.ts
 import axios from "axios";
 import Post from "../models/posts/Post";
