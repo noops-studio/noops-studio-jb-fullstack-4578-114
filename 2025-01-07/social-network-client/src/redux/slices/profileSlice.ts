@@ -48,6 +48,23 @@ const profileSlice = createSlice({
         }
         post.comments.push(comment);
       }
+    },
+    updateComment: (state, action: PayloadAction<{ postId: string; comment: Comment }>) => {
+      const { postId, comment } = action.payload;
+      const post = state.posts.find(p => p.id === postId);
+      if (post && post.comments) {
+        const commentIndex = post.comments.findIndex(c => c.id === comment.id);
+        if (commentIndex !== -1) {
+          post.comments[commentIndex] = comment;
+        }
+      }
+    },
+    removeComment: (state, action: PayloadAction<{ postId: string; commentId: string }>) => {
+      const { postId, commentId } = action.payload;
+      const post = state.posts.find(p => p.id === postId);
+      if (post && post.comments) {
+        post.comments = post.comments.filter(c => c.id !== commentId);
+      }
     }
   }
 });
@@ -59,8 +76,9 @@ export const {
   addPost,
   updatePost,
   removePost,
-  addComment
+  addComment,
+  updateComment,
+  removeComment
 } = profileSlice.actions;
 
 export default profileSlice.reducer;
-

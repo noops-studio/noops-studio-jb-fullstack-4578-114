@@ -1,32 +1,25 @@
-import axios from "axios";
+import { AxiosInstance } from "axios";
 import User from "../../models/users/Users";
+import AuthAware from "./AuthAware";
 
-class FollowerService {
+export class FollowersService extends AuthAware {
   async getFollowers(): Promise<User[]> {
-    console.log("Fetching followers...");
-    const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/followers`);
+    const response = await this.axiosInstance.get<User[]>('/follows/followers');
     return response.data;
   }
 
   async followUser(id: string) {
-    console.log(`Following user with ID: ${id}`);
-    const result = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/follow/${id}`);
-    console.log(result.data);
+    const result = await this.axiosInstance.post(`/follows/follow/${id}`);
     return result.data;
   }
 
-  async unfollowUser(id: string):Promise<void> {
-    console.log(`Unfollowing user with ID: ${id}`);
-    const response = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/unfollow/${id}`);
+  async unfollowUser(id: string): Promise<void> {
+    const response = await this.axiosInstance.post(`/follows/unfollow/${id}`);
     return response.data;
   }
 
   async getFollowing(): Promise<User[]> {
-    console.log("Fetching following...");
-    const response = await axios.get<User[]>(`${import.meta.env.VITE_REST_SERVER_URL}/follows/following`);
+    const response = await this.axiosInstance.get<User[]>('/follows/following');
     return response.data;
   }
 }
-
-const followerService = new FollowerService();
-export default followerService;

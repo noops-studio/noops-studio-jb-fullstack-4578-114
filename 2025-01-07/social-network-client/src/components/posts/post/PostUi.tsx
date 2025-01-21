@@ -1,8 +1,7 @@
 // components/posts/post/PostUi.tsx
 import React, { useState } from "react";
-import { useAppDispatch } from "../../../redux/hooks";
-import { addCommentToPost } from "../../../redux/profileSlice";
-import TinyEditor from "../../common/TinyEditor";
+import { useComments } from '../../../hooks/useComments';
+import TinyEditor from '../../common/TinyEditor';
 import PostModel from "../../../models/posts/Post";
 
 interface PostsUiProps {
@@ -36,13 +35,14 @@ export default function PostsUi({
   onDelete,
   onUpdate,
 }: PostsUiProps): JSX.Element {
-  const dispatch = useAppDispatch();
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { addComment } = useComments();
 
   const validateComment = (comment: string) => {
-    // Strip HTML tags for length validation
     const stripHtml = (html: string) => {
       const tmp = document.createElement("DIV");
       tmp.innerHTML = html;
@@ -54,37 +54,61 @@ export default function PostsUi({
   };
 
   const handleAddComment = async () => {
-    setCommentError(null);
-
     if (!validateComment(newComment)) {
       setCommentError(`Comment must be at least ${MIN_COMMENT_LENGTH} characters long`);
       return;
     }
 
+    setCommentError(null);
+    setIsAddingComment(true);
+
     try {
-      await dispatch(addCommentToPost({
-        postId: post.id,
-        body: newComment
-      })).unwrap();
+      await addComment(post.id, newComment);
       setNewComment("");
     } catch (error) {
-      console.error("Failed to add comment:", error);
       setCommentError("Failed to add comment. Please try again.");
+    } finally {
+      setIsAddingComment(false);
     }
   };
 
   const handleUpdate = async () => {
+    setIsUpdating(true);
     try {
       await onUpdate();
+      setIsEditing(false);
     } catch (error) {
       console.error("Failed to update post:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 7) {
+      return date.toLocaleDateString();
+    } else if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
     }
   };
 
   return (
     <div className="border rounded-lg shadow-lg bg-white p-6 mb-6">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <img
             src={profilePictureUrl}
@@ -93,12 +117,12 @@ export default function PostsUi({
           />
           <div>
             <h2 className="text-lg font-semibold">{post.user?.name || "Anonymous"}</h2>
-            <p className="text-sm text-gray-500">{new Date(post.createdAt).toLocaleString()}</p>
+            <p className="text-sm text-gray-500">{formatTimeAgo(post.createdAt)}</p>
           </div>
         </div>
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => setShowComments(true)}
+            onClick={() => setShowComments(!showComments)}
             className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
             title="Comments"
           >
@@ -109,9 +133,9 @@ export default function PostsUi({
             className={`p-2 rounded-full ${
               isEditing ? "bg-gray-400 hover:bg-gray-500" : "bg-green-500 hover:bg-green-600"
             } text-white`}
-            title="Edit"
+            title={isEditing ? "Cancel Edit" : "Edit"}
           >
-            ✏️
+            {isEditing ? "✕" : "✏️"}
           </button>
           <button
             onClick={() => setIsDeleteDialogOpen(true)}
@@ -126,9 +150,9 @@ export default function PostsUi({
       {/* Content Section */}
       {!isEditing ? (
         <div className="mt-4">
-          <h3 className="text-xl font-bold">{post.title}</h3>
+          <h3 className="text-xl font-bold mb-2">{post.title}</h3>
           <div
-            className="mt-2 text-gray-700"
+            className="prose max-w-none"
             dangerouslySetInnerHTML={{ __html: post.body }}
           />
         </div>
@@ -149,16 +173,18 @@ export default function PostsUi({
           />
           <div className="mt-4 flex justify-end space-x-4">
             <button
-              onClick={handleUpdate}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
-            >
-              Save
-            </button>
-            <button
               onClick={() => setIsEditing(false)}
               className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+              disabled={isUpdating}
             >
               Cancel
+            </button>
+            <button
+              onClick={handleUpdate}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:bg-blue-300"
+              disabled={isUpdating}
+            >
+              {isUpdating ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
@@ -182,13 +208,13 @@ export default function PostsUi({
               {post.comments?.map((comment) => (
                 <div key={comment.id} className="border-b pb-4">
                   <div className="flex items-center mb-2">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm mr-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm mr-2">
                       {comment.user?.name?.[0] || 'A'}
                     </div>
                     <div>
                       <p className="font-semibold">{comment.user?.name || "Anonymous"}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(comment.createdAt).toLocaleString()}
+                        {formatTimeAgo(comment.createdAt)}
                       </p>
                     </div>
                   </div>
@@ -209,6 +235,7 @@ export default function PostsUi({
                   value={newComment}
                   onChange={setNewComment}
                   placeholder="Add a comment..."
+                  height={150}
                 />
                 <p className="mt-1 text-sm text-gray-500">
                   Minimum {MIN_COMMENT_LENGTH} characters required
@@ -219,17 +246,21 @@ export default function PostsUi({
               </div>
               <div className="flex justify-end gap-4">
                 <button
-                  onClick={() => setShowComments(false)}
+                  onClick={() => {
+                    setNewComment("");
+                    setCommentError(null);
+                    setShowComments(false);
+                  }}
                   className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAddComment}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
-                  disabled={!newComment.trim()}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:bg-blue-300"
+                  disabled={isAddingComment || !newComment.trim()}
                 >
-                  Add Comment
+                  {isAddingComment ? "Adding Comment..." : "Add Comment"}
                 </button>
               </div>
             </div>
@@ -240,10 +271,12 @@ export default function PostsUi({
       {/* Delete Confirmation Dialog */}
       {isDeleteDialogOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h3 className="text-lg font-bold mb-4">Delete Post</h3>
-            <p className="mb-4">Are you sure you want to delete this post?</p>
-            <div className="flex justify-end space-x-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Delete Post</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-4">
               <button
                 onClick={() => setIsDeleteDialogOpen(false)}
                 className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
@@ -254,7 +287,7 @@ export default function PostsUi({
                 onClick={onDelete}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
               >
-                Delete
+                Delete Post
               </button>
             </div>
           </div>

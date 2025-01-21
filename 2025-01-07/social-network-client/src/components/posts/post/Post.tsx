@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useAppDispatch } from "../../../redux/hooks";
-import { deleteProfilePost, updateProfilePost } from "../../../redux/profileSlice";
 import PostModel from "../../../models/posts/Post";
 import PostsUi from "./PostUi";
+import useService from "../../../hooks/useService";
+import ProfileService from "../../../services/auth-aware/Profile";
 
 interface PostProps {
   post: PostModel;
@@ -10,6 +11,7 @@ interface PostProps {
 
 export default function Post({ post }: PostProps): JSX.Element {
   const dispatch = useAppDispatch();
+  const profileService = useService(ProfileService); // Use the service here
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -20,15 +22,25 @@ export default function Post({ post }: PostProps): JSX.Element {
 
   // Handle delete
   const handleDelete = async () => {
-    await dispatch(deleteProfilePost(post.id));
-    setIsDeleteDialogOpen(false);
+    try {
+      await profileService.removePost(post.id); // Direct service call
+      dispatch({ type: "profile/deletePost", payload: post.id }); // Update Redux state
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete post:", error.message);
+    }
   };
 
   // Handle update
   const handleUpdate = async () => {
     if (newTitle.trim() && newBody.trim()) {
-      await dispatch(updateProfilePost({ id: post.id, updatedPost: { title: newTitle, body: newBody } }));
-      setIsEditing(false);
+      try {
+        const updatedPost = await profileService.updatePost(post.id, { title: newTitle, body: newBody });
+        dispatch({ type: "profile/updatePost", payload: { id: post.id, updatedPost } }); // Update Redux state
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Failed to update post:", error.message);
+      }
     }
   };
 

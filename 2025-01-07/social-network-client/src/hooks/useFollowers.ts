@@ -1,15 +1,16 @@
 import { useAppDispatch } from '../redux/hooks';
 import { setFollowers, removeFollower, addFollower } from '../redux/slices/followersSlice';
 import { removeFollowing } from '../redux/slices/followingSlice';
-import followerService from '../services/auth-aware/FollowersService';
-import User from '../models/users/Users';
+import { FollowersService } from '../services/auth-aware/FollowersService';
+import useService from './useService';
 
 export const useFollowers = () => {
   const dispatch = useAppDispatch();
+  const followersService = useService(FollowersService);
 
   const fetchFollowers = async () => {
     try {
-      const followers = await followerService.getFollowers();
+      const followers = await followersService.getFollowers();
       dispatch(setFollowers(followers));
     } catch (error) {
       console.error('Failed to fetch followers:', error);
@@ -18,8 +19,7 @@ export const useFollowers = () => {
 
   const follow = async (userId: string) => {
     try {
-      await followerService.followUser(userId);
-      // Re-fetch followers to get updated list
+      await followersService.followUser(userId);
       await fetchFollowers();
     } catch (error) {
       console.error('Failed to follow user:', error);
@@ -29,10 +29,8 @@ export const useFollowers = () => {
 
   const unfollow = async (userId: string) => {
     try {
-      await followerService.unfollowUser(userId);
-      // Update both followers and following lists
+      await followersService.unfollowUser(userId);
       dispatch(removeFollowing(userId));
-      // Re-fetch followers to get updated list
       await fetchFollowers();
     } catch (error) {
       console.error('Failed to unfollow user:', error);

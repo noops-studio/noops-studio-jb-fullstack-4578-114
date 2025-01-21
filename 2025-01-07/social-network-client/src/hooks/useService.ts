@@ -7,7 +7,7 @@ export default function useService<T>(ServiceClass: new (axiosInstance: any) => 
 
   const axiosInstance = useMemo(() => {
     return axios.create({
-      baseURL: import.meta.env.VITE_REST_SERVER_URL,
+      baseURL: import.meta.env.VITE_REST_SERVER_URL_SAFE,
       headers: {
         Authorization: `Bearer ${jwt}`,
       },

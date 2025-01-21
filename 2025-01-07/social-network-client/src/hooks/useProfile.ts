@@ -1,10 +1,12 @@
 import { useAppDispatch } from '../redux/hooks';
 import { setLoading, setError, setPosts, addPost, updatePost, removePost, addComment } from '../redux/slices/profileSlice';
-import profileService from '../services/Profile';
+import Profile from '../services/auth-aware/Profile';
 import PostDraft from '../models/posts/PostDraft';
+import useService from './useService';
 
 export const useProfile = () => {
   const dispatch = useAppDispatch();
+  const profileService = useService(Profile);
 
   const fetchPosts = async () => {
     dispatch(setLoading(true));
