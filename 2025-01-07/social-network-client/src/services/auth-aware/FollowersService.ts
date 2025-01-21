@@ -1,5 +1,5 @@
 import axios from "axios";
-import User from "../models/users/Users";
+import User from "../../models/users/Users";
 
 class FollowerService {
   async getFollowers(): Promise<User[]> {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@mui/material";
-import followerService from "../../../services/FollowersService";
+import followerService from "../../../services/auth-aware/FollowersService";
 
 interface FollowButtonProps {
   userId: string;

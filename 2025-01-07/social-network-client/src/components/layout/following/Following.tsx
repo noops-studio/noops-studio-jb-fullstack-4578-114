@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import "./Following.css";
 import FollowingUi from "./FollowingUi";
-import followerService from "../../../services/FollowersService";
+import followerService from "../../../services/auth-aware/FollowersService";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
 import { init, unfollow } from "../../../redux/followingSlice";
 
