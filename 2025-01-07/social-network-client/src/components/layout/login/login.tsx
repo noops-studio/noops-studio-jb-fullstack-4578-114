@@ -1,25 +1,32 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import auth from "../../../services/auth";
+import { AuthContext } from "../../auth/Auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  const handleSubmit = async (event) => {
+  const { newLogin } = useContext(AuthContext)!;
+
+  const handleSubmit = async (event: { preventDefault: () => void; currentTarget: HTMLFormElement | undefined; }) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const username = data.get("username");
     const password = data.get("password");
 
+    getJwt(username, password);
+  };
+  async function getJwt(username, password) {
     try {
-      const jwt = await auth.login({ username, password });
-      document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
+      const userJwt = await auth.login({ username, password });
+      newLogin(userJwt)!;
+      console.log(userJwt);
+      document.cookie = `auth=${userJwt}; path=/; secure; SameSite=Strict`;
       navigate("/");
     } catch (error) {
       console.error("Login failed:", error);
     }
-  };
-
+  }
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6 bg-white shadow-md rounded-md">
@@ -39,6 +46,7 @@ export default function LoginPage() {
               required
               autoComplete="username"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              defaultValue={"bob000"}
             />
           </div>
           <div>
@@ -55,6 +63,7 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              defaultValue={"123456"}
             />
           </div>
           <button

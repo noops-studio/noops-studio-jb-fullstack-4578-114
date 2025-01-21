@@ -1,14 +1,23 @@
 // Header.tsx
-import React from 'react';
+import useUsername from '../../../hooks/useUsername';
 import { ResponsiveAppBar } from './MuiHeader';
-import { patch } from '@mui/material';
 
 export default function Header() {
   const links = [
-    { path: '/profile', name: 'Profile' ,type: 'menu'},
-    { path: '/feed', name: 'Feed' ,type: 'menu' },
-    {path: '/logout', name: 'logout', type: 'settings' },
+    { path: '/profile', name: 'Profile', type: 'menu' as const },
+    { path: '/feed', name: 'Feed', type: 'menu' as const },
+    { path: '/logout', name: 'Logout', type: 'settings' as const },
+    { path: '/logouta', name: 'Logouta', type: 'settings' as const },
   ];
 
-  return <ResponsiveAppBar links={links} />;
+  const profilePicUrl = "https://cdn.ozari.co.il/beery/noop.jpeg"; // Replace with dynamic URL
+  const username = useUsername();
+
+  return (
+    <ResponsiveAppBar
+      links={links}
+      profilePicUrl={profilePicUrl}
+      username={username}
+    />
+  );
 }

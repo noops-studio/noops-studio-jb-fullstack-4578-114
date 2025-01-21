@@ -4,15 +4,18 @@ import { Provider } from "react-redux";
 import Routing from "../layout/routing/Routing";
 import store from "../../redux/store";
 import "./App.css";
+import Auth from "../auth/Auth";
 
 export default function App(): JSX.Element {
   return (
     <div className="App">
-      <Provider store={store}>
-        <BrowserRouter>
+      <BrowserRouter>
+        <Provider store={store}>
+          <Auth>
           <Routing />
-        </BrowserRouter>
-      </Provider>
+          </Auth>
+        </Provider>
+      </BrowserRouter>
     </div>
   );
 }

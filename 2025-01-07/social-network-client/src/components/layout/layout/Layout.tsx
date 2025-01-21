@@ -1,25 +1,15 @@
 // components/layout/layout/Layout.tsx
-import React from "react";
+import React, { useContext } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import Folowers from "../folowers/Folowers";
 import Followings from "../following/Following";
 import Footer from "../footer/Footer";
 import Header from "../header/Header";
 import LoginPage from "../login/login";
+import { AuthContext } from "../../auth/Auth";
 
 // Utility function to check if the user is authenticated
 
-let isLoggedIn: boolean = false;
-
-const isAuthenticated = (): boolean => {
-  const foundAuthCookie = document.cookie
-    .split("; ")
-    .some((cookie) => cookie.startsWith("auth="));
-
-  isLoggedIn = foundAuthCookie;
-  return foundAuthCookie;
-};
-console.log(isAuthenticated());
 
 export default function Layout() {
   // Redirect to /login if the user is not authenticated
@@ -27,15 +17,19 @@ export default function Layout() {
   //   return <Navigate to="/login" replace />;
   // }
 
+  const {jwt} = useContext(AuthContext)!;
+const isAuthenticated: boolean = !!jwt;
+
+
   return (
     <div>
-      {!isLoggedIn && (
+      {!isAuthenticated && (
         <>
           <LoginPage />
         </>
       )}
 
-      {isLoggedIn && (
+      {isAuthenticated && (
         <>
           <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
             <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">

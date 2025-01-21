@@ -14,7 +14,7 @@ const FollowingUi: React.FC<FollowingProps> = ({ following, onUnfollow }) => {
           className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
         >
           <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-lg">
               {name[0].toUpperCase()}
             </div>
             <span className="text-gray-800 font-medium text-sm">{name}</span>
