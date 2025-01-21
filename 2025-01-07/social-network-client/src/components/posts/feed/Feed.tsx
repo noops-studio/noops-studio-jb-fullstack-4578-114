@@ -1,10 +1,11 @@
 // Feed.tsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import PostModel from '../../../models/posts/Post';
 import feed from '../../../services/Feed';
 import profileService from '../../../services/Profile';
-import FeedPost from './FeedPost';
 import Loading from '../../common/Loading';
-import PostModel from '../../../models/posts/Post';
+import { handleError } from '../../utils/errors';
+import FeedPost from './FeedPost';
 
 export default function Feed() {
   const [posts, setPosts] = useState<PostModel[]>([]);
@@ -21,8 +22,8 @@ export default function Feed() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setPosts(sortedPosts);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching the feed.');
+    } catch (error) {
+      console.error('Error deleting post:', handleError(error));
     } finally {
       setLoading(false);
     }

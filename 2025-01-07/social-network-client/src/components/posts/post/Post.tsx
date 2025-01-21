@@ -1,10 +1,10 @@
 // components/posts/post/Post.tsx
-import React, { useState } from "react";
-import { useAppDispatch } from "../../../redux/hooks";
-import PostModel from "../../../models/posts/Post";
-import PostsUi from "./PostUi";
+import { useState } from "react";
 import useService from "../../../hooks/useService";
+import PostModel from "../../../models/posts/Post";
+import { useAppDispatch } from "../../../redux/hooks";
 import ProfileService from "../../../services/auth-aware/Profile";
+import PostsUi from "./PostUi";
 
 interface PostProps {
   post: PostModel;

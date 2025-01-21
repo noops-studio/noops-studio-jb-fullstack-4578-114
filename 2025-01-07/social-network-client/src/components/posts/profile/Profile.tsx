@@ -1,11 +1,11 @@
 // components/posts/profile/Profile.tsx
-import React, { useEffect } from 'react';
-import { useAppSelector } from '../../../redux/hooks';
+import { useEffect } from 'react';
 import { useProfile } from '../../../hooks/useProfile';
+import useTitle from '../../../hooks/useTitle';
+import { useAppSelector } from '../../../redux/hooks';
+import Loading from '../../common/Loading';
 import NewPost from '../new/NewPost';
 import Post from '../post/Post';
-import Loading from '../../common/Loading';
-import useTitle from '../../../hooks/useTitle';
 import './Profile.css';
 
 export default function Profile() {
@@ -15,7 +15,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  },);
 
   const handleDelete = async (id: string) => {
     try {

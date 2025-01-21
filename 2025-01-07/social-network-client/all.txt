@@ -1474,6 +1474,7 @@ export default function NewPost({ onAddPost }: NewPostProps) {
   }
   
 # components/posts/post/Post.tsx
+// components/posts/post/Post.tsx
 import React, { useState } from "react";
 import { useAppDispatch } from "../../../redux/hooks";
 import PostModel from "../../../models/posts/Post";
@@ -1483,39 +1484,40 @@ import ProfileService from "../../../services/auth-aware/Profile";
 
 interface PostProps {
   post: PostModel;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export default function Post({ post }: PostProps): JSX.Element {
+export default function Post({ post, onDelete }: PostProps): JSX.Element {
   const dispatch = useAppDispatch();
-  const profileService = useService(ProfileService); // Use the service here
+  const profileService = useService(ProfileService);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(post.title);
   const [newBody, setNewBody] = useState(post.body);
 
-  const profilePictureUrl = "https://cdn.ozari.co.il/beery/noop.jpeg"; // Fixed profile picture URL
+  const profilePictureUrl = "https://cdn.ozari.co.il/beery/noop.jpeg";
 
-  // Handle delete
   const handleDelete = async () => {
     try {
-      await profileService.removePost(post.id); // Direct service call
-      dispatch({ type: "profile/deletePost", payload: post.id }); // Update Redux state
+      await onDelete(post.id);
       setIsDeleteDialogOpen(false);
     } catch (error) {
-      console.error("Failed to delete post:", error.message);
+      console.error("Failed to delete post:", error);
     }
   };
 
-  // Handle update
   const handleUpdate = async () => {
     if (newTitle.trim() && newBody.trim()) {
       try {
-        const updatedPost = await profileService.updatePost(post.id, { title: newTitle, body: newBody });
-        dispatch({ type: "profile/updatePost", payload: { id: post.id, updatedPost } }); // Update Redux state
+        const updatedPost = await profileService.updatePost(post.id, {
+          title: newTitle,
+          body: newBody,
+        });
+        dispatch({ type: "profile/updatePost", payload: updatedPost });
         setIsEditing(false);
       } catch (error) {
-        console.error("Failed to update post:", error.message);
+        console.error("Failed to update post:", error);
       }
     }
   };
@@ -1537,7 +1539,6 @@ export default function Post({ post }: PostProps): JSX.Element {
     />
   );
 }
-
 # components/posts/post/PostsUi.css
 .post-card {
     margin: 16px;
@@ -1911,11 +1912,19 @@ import './Profile.css';
 export default function Profile() {
   useTitle('Profile');
   const { posts, loading, error } = useAppSelector((state) => state.profile);
-  const { fetchPosts, createPost } = useProfile();
+  const { fetchPosts, createPost, deletePost } = useProfile();
 
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePost(id);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+    }
+  };
 
   if (loading) {
     return <Loading isLoading={true} />;
@@ -1931,7 +1940,11 @@ export default function Profile() {
       <div className="posts-container flex-grow mt-6">
         {Array.isArray(posts) && posts.length > 0 ? (
           posts.map((post) => (
-            <Post key={post.id} post={post} />
+            <Post 
+              key={post.id} 
+              post={post}
+              onDelete={handleDelete}
+            />
           ))
         ) : (
           <div className="text-center text-gray-500 mt-4">
@@ -1954,7 +1967,7 @@ export const useComments = () => {
 
   const addComment = async (postId: string, body: string) => {
     try {
-      const comment = await CommentService.addComment(postId, body);
+      const comment = await commentService.addComment(postId, body);
       dispatch(addCommentAction({ postId, comment }));
       return comment;
     } catch (error) {
@@ -2071,6 +2084,7 @@ export const useFollowing = () => {
   };
 };
 # hooks/useProfile.ts
+// hooks/useProfile.ts
 import { useAppDispatch } from '../redux/hooks';
 import { setLoading, setError, setPosts, addPost, updatePost, removePost, addComment } from '../redux/slices/profileSlice';
 import Profile from '../services/auth-aware/Profile';
@@ -2086,8 +2100,12 @@ export const useProfile = () => {
     try {
       const posts = await profileService.getProfile();
       dispatch(setPosts(posts));
-    } catch (error: any) {
-      dispatch(setError(error.message));
+    } catch (error) {
+      if (error instanceof Error) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     } finally {
       dispatch(setLoading(false));
     }
@@ -2098,8 +2116,10 @@ export const useProfile = () => {
     try {
       const post = await profileService.addPost(newPost);
       dispatch(addPost(post));
+      return post;
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     } finally {
       dispatch(setLoading(false));
     }
@@ -2110,8 +2130,10 @@ export const useProfile = () => {
     try {
       const post = await profileService.updatePost(id, updatedPost);
       dispatch(updatePost(post));
+      return post;
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     } finally {
       dispatch(setLoading(false));
     }
@@ -2124,6 +2146,7 @@ export const useProfile = () => {
       dispatch(removePost(id));
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     } finally {
       dispatch(setLoading(false));
     }
@@ -2133,8 +2156,10 @@ export const useProfile = () => {
     try {
       const comment = await profileService.addComment(postId, body);
       dispatch(addComment({ postId, comment }));
+      return comment;
     } catch (error: any) {
       dispatch(setError(error.message));
+      throw error;
     }
   };
 
@@ -2459,6 +2484,7 @@ export const { setFollowing, removeFollowing, addFollowing } = followingSlice.ac
 export default followingSlice.reducer;
 
 # redux/slices/profileSlice.ts
+// redux/slices/profileSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import Post from '../../models/posts/Post';
 import Comment from '../../models/comment/Comments';
@@ -2489,7 +2515,7 @@ const profileSlice = createSlice({
       state.posts = action.payload;
     },
     addPost: (state, action: PayloadAction<Post>) => {
-      state.posts.unshift(action.payload);
+      state.posts = [action.payload, ...state.posts];
     },
     updatePost: (state, action: PayloadAction<Post>) => {
       const index = state.posts.findIndex(post => post.id === action.payload.id);
@@ -2507,24 +2533,7 @@ const profileSlice = createSlice({
         if (!post.comments) {
           post.comments = [];
         }
-        post.comments.push(comment);
-      }
-    },
-    updateComment: (state, action: PayloadAction<{ postId: string; comment: Comment }>) => {
-      const { postId, comment } = action.payload;
-      const post = state.posts.find(p => p.id === postId);
-      if (post && post.comments) {
-        const commentIndex = post.comments.findIndex(c => c.id === comment.id);
-        if (commentIndex !== -1) {
-          post.comments[commentIndex] = comment;
-        }
-      }
-    },
-    removeComment: (state, action: PayloadAction<{ postId: string; commentId: string }>) => {
-      const { postId, commentId } = action.payload;
-      const post = state.posts.find(p => p.id === postId);
-      if (post && post.comments) {
-        post.comments = post.comments.filter(c => c.id !== commentId);
+        post.comments = [...post.comments, comment];
       }
     }
   }
@@ -2537,9 +2546,7 @@ export const {
   addPost,
   updatePost,
   removePost,
-  addComment,
-  updateComment,
-  removeComment
+  addComment
 } = profileSlice.actions;
 
 export default profileSlice.reducer;
@@ -2561,38 +2568,6 @@ export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
 export default store;
-# redux/thunks/profileThunks.ts
-import { AppDispatch } from '../store';
-import profileService from '../../services/Profile';
-import {
-  fetchStart,
-  fetchSuccess,
-  fetchFailure,
-  addPost,
-  updatePost,
-  deletePost,
-} from '../slices/profileSlice';
-import PostDraft from '../../models/posts/PostDraft';
-
-export const fetchProfilePosts = () => async (dispatch: AppDispatch) => {
-  dispatch(fetchStart());
-  try {
-    const posts = await profileService.getProfile();
-    dispatch(fetchSuccess(posts));
-  } catch (error) {
-    dispatch(fetchFailure(error.message || 'Failed to fetch posts.'));
-  }
-};
-
-export const addProfilePost = (newPost: PostDraft) => async (dispatch: AppDispatch) => {
-  try {
-    const post = await profileService.addPost(newPost);
-    dispatch(addPost(post));
-  } catch (error) {
-    console.error(error);
-  }
-};
-
 # services/auth-aware/AuthAware.ts
 import { AxiosInstance } from "axios";
 

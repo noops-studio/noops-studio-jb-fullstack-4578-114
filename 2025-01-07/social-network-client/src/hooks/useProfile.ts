@@ -4,6 +4,7 @@ import { setLoading, setError, setPosts, addPost, updatePost, removePost, addCom
 import Profile from '../services/auth-aware/Profile';
 import PostDraft from '../models/posts/PostDraft';
 import useService from './useService';
+import { isAppError } from '../components/utils/errors';
 
 export const useProfile = () => {
   const dispatch = useAppDispatch();
@@ -14,8 +15,8 @@ export const useProfile = () => {
     try {
       const posts = await profileService.getProfile();
       dispatch(setPosts(posts));
-    } catch (error) {
-      if (error instanceof Error) {
+    } catch (error: unknown) {
+      if (isAppError(error)) {
         dispatch(setError(error.message));
       } else {
         dispatch(setError('An unknown error occurred'));
@@ -31,11 +32,12 @@ export const useProfile = () => {
       const post = await profileService.addPost(newPost);
       dispatch(addPost(post));
       return post;
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
-    } finally {
-      dispatch(setLoading(false));
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     }
   };
 
@@ -45,9 +47,12 @@ export const useProfile = () => {
       const post = await profileService.updatePost(id, updatedPost);
       dispatch(updatePost(post));
       return post;
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     } finally {
       dispatch(setLoading(false));
     }
@@ -58,9 +63,12 @@ export const useProfile = () => {
     try {
       await profileService.removePost(id);
       dispatch(removePost(id));
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     } finally {
       dispatch(setLoading(false));
     }
@@ -71,9 +79,12 @@ export const useProfile = () => {
       const comment = await profileService.addComment(postId, body);
       dispatch(addComment({ postId, comment }));
       return comment;
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     }
   };
 
