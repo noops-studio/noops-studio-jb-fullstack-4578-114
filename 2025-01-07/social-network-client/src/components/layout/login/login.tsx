@@ -1,17 +1,6 @@
 import React from "react";
-import {
-  Box,
-  Button,
-  Container,
-  TextField,
-  Typography,
-  CssBaseline,
-  Grid,
-} from "@mui/material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
-
-const theme = createTheme();
+import auth from "../../../services/auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -23,89 +12,67 @@ export default function LoginPage() {
     const password = data.get("password");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password,
-        }),
-      });
-
-      const result = await response.json();
-      if (response.ok) {
-        console.log("Login successful:", result);
-        document.cookie = `auth=${result.jwt}; path=/; secure; SameSite=Strict`;
-        navigate("/");
-      } else {
-        console.error("Login failed:", result);
-      }
+      const jwt = await auth.login({ username, password });
+      document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
+      navigate("/");
     } catch (error) {
-      console.error("An error occurred:", error);
+      console.error("Login failed:", error);
     }
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container component="main" maxWidth="xs">
-        <CssBaseline />
-        <Box
-          sx={{
-            marginTop: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <Typography component="h1" variant="h5">
-            Sign in
-          </Typography>
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              autoFocus
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="w-full max-w-md p-6 bg-white shadow-md rounded-md">
+        <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700"
             >
-              Sign In
-            </Button>
-            <Grid container>
-              <Grid item xs>
-                <Button href="#" variant="text">
-                  Forgot password?
-                </Button>
-              </Grid>
-              <Grid item>
-                <Button href="#" variant="text">
-                  {"Don't have an account? Sign Up"}
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
-        </Box>
-      </Container>
-    </ThemeProvider>
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              required
+              autoComplete="username"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Sign In
+          </button>
+          <div className="flex justify-between items-center text-sm">
+            <a href="#" className="text-blue-500 hover:underline">
+              Forgot password?
+            </a>
+            <a href="#" className="text-blue-500 hover:underline">
+              Don't have an account? Sign Up
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }

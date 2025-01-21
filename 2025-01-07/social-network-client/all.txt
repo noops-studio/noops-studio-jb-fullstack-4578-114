@@ -714,64 +714,72 @@ import Folowers from "../folowers/Folowers";
 import Followings from "../following/Following";
 import Footer from "../footer/Footer";
 import Header from "../header/Header";
+import LoginPage from "../login/login";
 
 // Utility function to check if the user is authenticated
+
+let isLoggedIn: boolean = false;
+
 const isAuthenticated = (): boolean => {
-  // Look for the presence of the 'auth' cookie
-  return document.cookie
+  const foundAuthCookie = document.cookie
     .split("; ")
     .some((cookie) => cookie.startsWith("auth="));
+
+  isLoggedIn = foundAuthCookie;
+  return foundAuthCookie;
 };
+console.log(isAuthenticated());
 
 export default function Layout() {
   // Redirect to /login if the user is not authenticated
-  if (!isAuthenticated()) {
-    return <Navigate to="/login" replace />;
-  }
+  // if (!isAuthenticated()) {
+  //   return <Navigate to="/login" replace />;
+  // }
 
   return (
-    <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
-      <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
-        <Header />
-      </header>
+    <div>
+      {!isLoggedIn && (
+        <>
+          <LoginPage />
+        </>
+      )}
 
-      <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 h-full grid grid-rows-2 gap-4">
-        <div className="overflow-y-auto">
-          <Followings />
-        </div>
-        <div className="overflow-y-auto">
-          <Folowers />
-        </div>
-      </aside>
+      {isLoggedIn && (
+        <>
+          <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
+            <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
+              <Header />
+            </header>
 
-      <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
-        <div className="h-full overflow-y-auto">
-          <Outlet />
-        </div>
-      </main>
+            <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 h-full grid grid-rows-2 gap-4">
+              <div className="overflow-y-auto">
+                <Followings />
+              </div>
+              <div className="overflow-y-auto">
+                <Folowers />
+              </div>
+            </aside>
 
-      <footer className="col-span-2 row-start-4 bg-gray-800 h-5 text-white text-center py-4">
-        <Footer />
-      </footer>
+            <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
+              <div className="h-full overflow-y-auto">
+                <Outlet />
+              </div>
+            </main>
+
+            <footer className="col-span-2 row-start-4 bg-gray-800 h-5 text-white text-center py-4">
+              <Footer />
+            </footer>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 # components/layout/login/login.tsx
 import React from "react";
-import {
-  Box,
-  Button,
-  Container,
-  TextField,
-  Typography,
-  CssBaseline,
-  Grid,
-} from "@mui/material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
-
-const theme = createTheme();
+import auth from "../../../services/auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -783,90 +791,68 @@ export default function LoginPage() {
     const password = data.get("password");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password,
-        }),
-      });
-
-      const result = await response.json();
-      if (response.ok) {
-        console.log("Login successful:", result);
-        document.cookie = `auth=${result.jwt}; path=/; secure; SameSite=Strict`;
-        navigate("/");
-      } else {
-        console.error("Login failed:", result);
-      }
+      const jwt = await auth.login({ username, password });
+      document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
+      navigate("/");
     } catch (error) {
-      console.error("An error occurred:", error);
+      console.error("Login failed:", error);
     }
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container component="main" maxWidth="xs">
-        <CssBaseline />
-        <Box
-          sx={{
-            marginTop: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <Typography component="h1" variant="h5">
-            Sign in
-          </Typography>
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              autoFocus
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="w-full max-w-md p-6 bg-white shadow-md rounded-md">
+        <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-gray-700"
             >
-              Sign In
-            </Button>
-            <Grid container>
-              <Grid item xs>
-                <Button href="#" variant="text">
-                  Forgot password?
-                </Button>
-              </Grid>
-              <Grid item>
-                <Button href="#" variant="text">
-                  {"Don't have an account? Sign Up"}
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
-        </Box>
-      </Container>
-    </ThemeProvider>
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              required
+              autoComplete="username"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Sign In
+          </button>
+          <div className="flex justify-between items-center text-sm">
+            <a href="#" className="text-blue-500 hover:underline">
+              Forgot password?
+            </a>
+            <a href="#" className="text-blue-500 hover:underline">
+              Don't have an account? Sign Up
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -1957,6 +1943,8 @@ export default interface Comment extends CommentDraft {
     user: User;
 }
 
+# models/login/User.ts
+
 # models/posts/Post.ts
 import Comment from "../comment/Comments";
 import User from "../users/Users";
@@ -1986,12 +1974,17 @@ export default interface PostDraft {
     updated_at:string;
 
  }
-# models/users/Users.ts
-export default interface User {
-    id: string;
-    name: string;
+# models/users/Login.ts
+export default interface Login {
     username: string;
     password: string;
+}
+# models/users/Users.ts
+import Login from "./Login";
+
+export default interface User extends Login {
+    id: string;
+    name: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -2225,6 +2218,137 @@ const profileSlice = createSlice({
 });
 
 export default profileSlice.reducer;
+# redux/slices/followersSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import User from '../../models/users/Users';
+
+interface FollowersState {
+  followers: User[];
+}
+
+const initialState: FollowersState = {
+  followers: [],
+};
+
+const followersSlice = createSlice({
+  name: 'followers',
+  initialState,
+  reducers: {
+    init: (state, action: PayloadAction<User[]>) => ({
+      ...state,
+      followers: action.payload,
+    }),
+    unfollow: (state, action: PayloadAction<string>) => ({
+      ...state,
+      followers: state.followers.filter(user => user.id !== action.payload),
+    }),
+    follow: (state, action: PayloadAction<User>) => ({
+      ...state,
+      followers: [...state.followers, action.payload],
+    }),
+  },
+});
+
+export const { init, unfollow, follow } = followersSlice.actions;
+export default followersSlice.reducer;
+
+# redux/slices/followingSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import User from '../../models/users/Users';
+
+interface FollowingState {
+  following: User[];
+}
+
+const initialState: FollowingState = {
+  following: [],
+};
+
+const followingSlice = createSlice({
+  name: 'following',
+  initialState,
+  reducers: {
+    init: (state, action: PayloadAction<User[]>) => ({
+      ...state,
+      following: action.payload,
+    }),
+    unfollow: (state, action: PayloadAction<string>) => ({
+      ...state,
+      following: state.following.filter(user => user.id !== action.payload),
+    }),
+    follow: (state, action: PayloadAction<User>) => ({
+      ...state,
+      following: [...state.following, action.payload],
+    }),
+  },
+});
+
+export const { init, unfollow, follow } = followingSlice.actions;
+export default followingSlice.reducer;
+
+# redux/slices/profileSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import Post from '../../models/posts/Post';
+import PostDraft from '../../models/posts/PostDraft';
+
+interface ProfileState {
+  posts: Post[];
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: ProfileState = {
+  posts: [],
+  loading: false,
+  error: null,
+};
+
+const profileSlice = createSlice({
+  name: 'profile',
+  initialState,
+  reducers: {
+    fetchStart: (state) => ({
+      ...state,
+      loading: true,
+      error: null,
+    }),
+    fetchSuccess: (state, action: PayloadAction<Post[]>) => ({
+      ...state,
+      posts: action.payload,
+      loading: false,
+    }),
+    fetchFailure: (state, action: PayloadAction<string>) => ({
+      ...state,
+      loading: false,
+      error: action.payload,
+    }),
+    addPost: (state, action: PayloadAction<Post>) => ({
+      ...state,
+      posts: [...state.posts, action.payload],
+    }),
+    updatePost: (state, action: PayloadAction<{ id: string; updatedPost: Post }>) => ({
+      ...state,
+      posts: state.posts.map(post =>
+        post.id === action.payload.id ? { ...post, ...action.payload.updatedPost } : post
+      ),
+    }),
+    deletePost: (state, action: PayloadAction<string>) => ({
+      ...state,
+      posts: state.posts.filter(post => post.id !== action.payload),
+    }),
+  },
+});
+
+export const {
+  fetchStart,
+  fetchSuccess,
+  fetchFailure,
+  addPost,
+  updatePost,
+  deletePost,
+} = profileSlice.actions;
+export default profileSlice.reducer;
+
 # redux/store.ts
 import { configureStore } from "@reduxjs/toolkit";
 import followingSlice from "./followingSlice";
@@ -2243,6 +2367,38 @@ export default store;
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+# redux/thunks/profileThunks.ts
+import { AppDispatch } from '../store';
+import profileService from '../../services/Profile';
+import {
+  fetchStart,
+  fetchSuccess,
+  fetchFailure,
+  addPost,
+  updatePost,
+  deletePost,
+} from '../slices/profileSlice';
+import PostDraft from '../../models/posts/PostDraft';
+
+export const fetchProfilePosts = () => async (dispatch: AppDispatch) => {
+  dispatch(fetchStart());
+  try {
+    const posts = await profileService.getProfile();
+    dispatch(fetchSuccess(posts));
+  } catch (error) {
+    dispatch(fetchFailure(error.message || 'Failed to fetch posts.'));
+  }
+};
+
+export const addProfilePost = (newPost: PostDraft) => async (dispatch: AppDispatch) => {
+  try {
+    const post = await profileService.addPost(newPost);
+    dispatch(addPost(post));
+  } catch (error) {
+    console.error(error);
+  }
+};
 
 # services/addComment.ts
 import axios from "axios";
@@ -2267,6 +2423,18 @@ export default async function InsertComment(commentData: CommentDraft): Promise<
 
 }
 
+# services/auth.ts
+import axios from "axios";
+import Login from "../models/users/Login";
+
+class Auth {
+    async login(login: Login) {
+        const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, login);
+    return response.data.jwt;
+    }
+}
+const auth = new Auth();
+export default auth;
 # services/Feed.ts
 import axios from "axios";
 import Post from "../models/posts/Post";
