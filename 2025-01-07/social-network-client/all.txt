@@ -414,95 +414,120 @@ export default FollowingUi;
 # components/layout/folowers/Folowers.css
 
 # components/layout/folowers/Folowers.tsx
+// # components/layout/folowers/Folowers.tsx
 import { useEffect } from "react";
 import "./Folowers.css";
 import FollowersUi from "./FolowersUi";
 import followerService from "../../../services/FollowersService";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { init, unfollow, follow } from "../../../redux/followersSlice";
+import { init as initFollowers } from "../../../redux/followersSlice";
+import { init as initFollowing } from "../../../redux/followingSlice";
+import { fetchProfilePosts } from "../../../redux/profileSlice";
+import feed from "../../../services/Feed";
 
 export default function Folowers(): JSX.Element {
   const followers = useAppSelector((state) => state.followers.followers || []);
   const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    const fetchFollowers = async () => {
-      try {
-        const followersData = await followerService.getFollowers();
-        console.log("Fetched followers:", followersData); // Log the fetched data
-        dispatch(init(followersData));
-      } catch (error) {
-        console.error("Failed to fetch followers:", error);
-      }
-    };
-    fetchFollowers();
-  }, [dispatch]);
-  
-
-  const handleFollowUnfollow = async (userId: string) => {
+  // Function to fetch all necessary data
+  const fetchData = async () => {
     try {
-      // Optimistically update Redux store
-      dispatch(unfollow(userId));
-  
-      // Make API call
-      await followerService.unfollowUser(userId);
+      // Fetch followers, following lists, and feed data in parallel
+      const [followersData, followingData] = await Promise.all([
+        followerService.getFollowers(),
+        followerService.getFollowing(),
+      ]);
+      
+      // Update both states
+      dispatch(initFollowers(followersData));
+      dispatch(initFollowing(followingData));
+
+      // Re-fetch feed data
+      await feed.getFeed();
+      
+      // Also refresh profile posts if needed
+      dispatch(fetchProfilePosts());
     } catch (error) {
-      console.error("Failed to unfollow user:", error);
-  
-      // Rollback in case of failure
-      dispatch(follow({ id: userId, name: "Unknown", isFollowing: true }));
+      console.error("Failed to fetch data:", error);
     }
   };
-  
-  
+
+  useEffect(() => {
+    fetchData();
+  }, [dispatch]);
+
+  const handleFollowUnfollow = async (userId: string, isCurrentlyFollowing: boolean) => {
+    try {
+      if (isCurrentlyFollowing) {
+        await followerService.unfollowUser(userId);
+      } else {
+        await followerService.followUser(userId);
+      }
+      
+      // Refresh all data after follow/unfollow action
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to follow/unfollow user:", error);
+    }
+  };
 
   return (
     <div className="h-full">
       <h1 className="text-lg font-semibold mb-4">Followers List</h1>
-      <FollowersUi followers={followers} onFollowUnfollow={handleFollowUnfollow} />
+      <FollowersUi 
+        followers={followers} 
+        onFollowUnfollow={handleFollowUnfollow} 
+      />
     </div>
   );
 }
-
 # components/layout/folowers/FolowersUi.tsx
+// # components/layout/folowers/FolowersUi.tsx
 interface FollowersProps {
   followers: { id: string; name: string; isFollowing: boolean }[];
-  onFollowUnfollow: (userId: string, isFollowing: boolean) => void;
+  onFollowUnfollow: (userId: string, isFollowing: boolean) => Promise<void>;
 }
 
 const FollowersUi: React.FC<FollowersProps> = ({ followers, onFollowUnfollow }) => {
-  console.log(followers);
   return (
     <div className="flex flex-col p-4 bg-gray-50 rounded-md shadow-md max-h-80 overflow-y-auto">
-{followers.map(({ id, name, isFollowing }) => (
-  <div
-    key={id} // Ensure `key` is a unique identifier
-    className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
-  >
-    <div className="flex items-center space-x-4">
-      <div className="w-10 h-10 bg-purple-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
-        {name ? name[0].toUpperCase() : "?"}
-      </div>
-      <span className="text-gray-800 font-medium text-sm">{name || "Unknown"}</span>
-    </div>
-    <button
-      onClick={() => onFollowUnfollow(id, isFollowing)}
-      className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md ${
-        isFollowing
-          ? "bg-red-500 text-white hover:bg-red-600"
-          : "bg-blue-500 text-white hover:bg-blue-600"
-      }`}
-    >
-      {isFollowing ? "Unfollow" : "Follow"}
-    </button>
-  </div>
-))}
+      {followers.map(({ id, name, isFollowing }) => (
+        <div
+          key={id}
+          className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="w-10 h-10 bg-purple-500 text-white flex items-center justify-center rounded-full text-lg font-semibold">
+              {name ? name[0].toUpperCase() : "?"}
+            </div>
+            <span className="text-gray-800 font-medium text-sm">{name || "Unknown"}</span>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                await onFollowUnfollow(id, isFollowing);
+              } catch (error) {
+                console.error("Error following/unfollowing user:", error);
+              }
+            }}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md ${
+              isFollowing
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-blue-500 text-white hover:bg-blue-600"
+            }`}
+          >
+            {isFollowing ? "Unfollow" : "Follow"}
+          </button>
+        </div>
+      ))}
+      {followers.length === 0 && (
+        <p className="text-gray-500 text-center">No followers yet.</p>
+      )}
     </div>
   );
 };
 
 export default FollowersUi;
-
 # components/layout/footer/Footer.css
 
 # components/layout/footer/Footer.tsx

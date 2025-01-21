@@ -1,49 +1,67 @@
+// # components/layout/folowers/Folowers.tsx
 import { useEffect } from "react";
 import "./Folowers.css";
 import FollowersUi from "./FolowersUi";
 import followerService from "../../../services/FollowersService";
 import { useAppDispatch, useAppSelector } from "../../../redux/hooks";
-import { init, unfollow, follow } from "../../../redux/followersSlice";
+import { init as initFollowers } from "../../../redux/followersSlice";
+import { init as initFollowing } from "../../../redux/followingSlice";
+import { fetchProfilePosts } from "../../../redux/profileSlice";
+import feed from "../../../services/Feed";
 
 export default function Folowers(): JSX.Element {
   const followers = useAppSelector((state) => state.followers.followers || []);
   const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    const fetchFollowers = async () => {
-      try {
-        const followersData = await followerService.getFollowers();
-        console.log("Fetched followers:", followersData); // Log the fetched data
-        dispatch(init(followersData));
-      } catch (error) {
-        console.error("Failed to fetch followers:", error);
-      }
-    };
-    fetchFollowers();
-  }, [dispatch]);
-  
-
-  const handleFollowUnfollow = async (userId: string) => {
+  // Function to fetch all necessary data
+  const fetchData = async () => {
     try {
-      // Optimistically update Redux store
-      dispatch(unfollow(userId));
-  
-      // Make API call
-      await followerService.unfollowUser(userId);
+      // Fetch followers, following lists, and feed data in parallel
+      const [followersData, followingData] = await Promise.all([
+        followerService.getFollowers(),
+        followerService.getFollowing(),
+      ]);
+      
+      // Update both states
+      dispatch(initFollowers(followersData));
+      dispatch(initFollowing(followingData));
+
+      // Re-fetch feed data
+      await feed.getFeed();
+      
+      // Also refresh profile posts if needed
+      dispatch(fetchProfilePosts());
     } catch (error) {
-      console.error("Failed to unfollow user:", error);
-  
-      // Rollback in case of failure
-      dispatch(follow({ id: userId, name: "Unknown", isFollowing: true }));
+      console.error("Failed to fetch data:", error);
     }
   };
-  
-  
+
+  useEffect(() => {
+    fetchData();
+  }, [dispatch]);
+
+  const handleFollowUnfollow = async (userId: string, isCurrentlyFollowing: boolean) => {
+    try {
+      if (isCurrentlyFollowing) {
+        await followerService.unfollowUser(userId);
+      } else {
+        await followerService.followUser(userId);
+      }
+      
+      // Refresh all data after follow/unfollow action
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to follow/unfollow user:", error);
+    }
+  };
 
   return (
     <div className="h-full">
       <h1 className="text-lg font-semibold mb-4">Followers List</h1>
-      <FollowersUi followers={followers} onFollowUnfollow={handleFollowUnfollow} />
+      <FollowersUi 
+        followers={followers} 
+        onFollowUnfollow={handleFollowUnfollow} 
+      />
     </div>
   );
 }
