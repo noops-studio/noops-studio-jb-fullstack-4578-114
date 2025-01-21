@@ -1,8 +1,10 @@
+// Feed.tsx
 import React, { useEffect, useState } from 'react';
-import PostModel from '../../../models/posts/Post';
 import feed from '../../../services/Feed';
-import './Feed.css';
+import profileService from '../../../services/Profile';
+import FeedPost from './FeedPost';
 import Loading from '../../common/Loading';
+import PostModel from '../../../models/posts/Post';
 
 export default function Feed() {
   const [posts, setPosts] = useState<PostModel[]>([]);
@@ -14,7 +16,11 @@ export default function Feed() {
     setError(null);
     try {
       const data = await feed.getFeed();
-      setPosts(data);
+      // Sort posts by date (newest first)
+      const sortedPosts = data.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setPosts(sortedPosts);
     } catch (err: any) {
       setError(err.message || 'An error occurred while fetching the feed.');
     } finally {
@@ -26,24 +32,64 @@ export default function Feed() {
     fetchData();
   }, []);
 
+  const handleAddComment = async (postId: string, comment: string) => {
+    try {
+      const newComment = await profileService.addComment(postId, comment);
+      // Update the posts state with the new comment
+      setPosts(currentPosts => 
+        currentPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [...(post.comments || []), newComment].sort(
+                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              )
+            };
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      throw error;
+    }
+  };
+
+  if (loading) {
+    return <Loading isLoading={true} />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <div className="text-red-500 mb-4">{error}</div>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="feed-container bg-gray-50 min-h-screen py-10">
-      <Loading isLoading={loading} error={error} onRetry={fetchData} />
-      <div className="max-w-4xl mx-auto mt-5 px-4">
-        <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Feed</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {posts.map(({ id, title, body }) => (
-            <div
-              key={id}
-              className="bg-white shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-300 p-6"
-            >
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">{title}</h2>
-              <div className="text-sm text-gray-600">
-                <div dangerouslySetInnerHTML={{ __html: body }}></div>
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="max-w-3xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6 text-gray-900">Your Feed</h1>
+      <div className="space-y-6">
+        {posts.length > 0 ? (
+          posts.map(post => (
+            <FeedPost
+              key={post.id}
+              post={post}
+              onAddComment={handleAddComment}
+            />
+          ))
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            No posts to show. Follow some users to see their posts here!
+          </div>
+        )}
       </div>
     </div>
   );

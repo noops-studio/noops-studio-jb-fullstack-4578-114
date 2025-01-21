@@ -103,7 +103,7 @@ const profileSlice = createSlice({
         state.loading = true;
       })
       .addCase(addProfilePost.fulfilled, (state, action: PayloadAction<Post>) => {
-        state.posts.unshift(action.payload);
+        state.posts = [...state.posts , action.payload];
         state.loading = false;
       })
       .addCase(addProfilePost.rejected, (state, action) => {

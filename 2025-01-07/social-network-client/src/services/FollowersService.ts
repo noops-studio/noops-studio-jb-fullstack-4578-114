@@ -8,9 +8,11 @@ class FollowerService {
     return response.data;
   }
 
-  async followUser(id: string): Promise<void> {
+  async followUser(id: string) {
     console.log(`Following user with ID: ${id}`);
-    await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/follow/${id}`);
+    const result = await axios.post(`${import.meta.env.VITE_REST_SERVER_URL}/follows/follow/${id}`);
+    console.log(result.data);
+    return result.data;
   }
 
   async unfollowUser(id: string):Promise<void> {
