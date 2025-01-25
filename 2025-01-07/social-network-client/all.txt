@@ -29,31 +29,32 @@ export default function App(): JSX.Element {
 # components/auth/Auth.tsx
 import { createContext, PropsWithChildren, useState } from "react";
 
-
 interface AuthContextInterface {
     jwt: string;
     newLogin: React.Dispatch<React.SetStateAction<string>>;
-    
+    logout: () => void;
 }
 
 export const AuthContext = createContext<AuthContextInterface | null>(null);
 
-
-export default function Auth(props:PropsWithChildren): JSX.Element {
-
+export default function Auth(props: PropsWithChildren): JSX.Element {
     const JWT_KEY = 'jwt';
+    const [jwt, setJwt] = useState<string>(localStorage.getItem(JWT_KEY) || '');
 
-    const [jwt, setJwt] = useState<string>(localStorage.getItem(JWT_KEY) ||'');
+    function newLogin(jwt: string) {
+        localStorage.setItem(JWT_KEY, jwt);
+        setJwt(jwt);
+    }
 
-function newLogin(jwt: string) {
-    localStorage.setItem(JWT_KEY, jwt);
-    setJwt(jwt);
-}
+    function logout() {
+        localStorage.removeItem(JWT_KEY);
+        setJwt('');
+    }
 
-const {children} = props;
+    const { children } = props;
 
-    return(
-        <AuthContext.Provider value={{jwt, newLogin}}>
+    return (
+        <AuthContext.Provider value={{ jwt, newLogin, logout }}>
             {children}
         </AuthContext.Provider>
     )
@@ -811,45 +812,141 @@ const isAuthenticated: boolean = !!jwt;
 }
 
 # components/layout/login/login.tsx
-import React, { useContext } from "react";
+import React, { useState, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import auth from "../../../services/auth";
 import { AuthContext } from "../../auth/Auth";
 
 export default function LoginPage() {
-  const navigate = useNavigate();
+  enum AuthType {
+    Login = "login",
+    Signup = "signup",
+  }
 
+  const navigate = useNavigate();
   const { newLogin } = useContext(AuthContext)!;
 
-  const handleSubmit = async (event: { preventDefault: () => void; currentTarget: HTMLFormElement | undefined; }) => {
+  const [authType, setAuthType] = useState<AuthType>(AuthType.Login);
+  const [error, setError] = useState<string | null>(null);
+  const [passwordFeedback, setPasswordFeedback] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    specialChar: false,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showValidationToast, setShowValidationToast] = useState(false);
+  const [isToastDragged, setIsToastDragged] = useState(false);
+
+  const toastRef = useRef<HTMLDivElement | null>(null);
+
+  const validateName = (name: string): boolean => {
+    const nameRegex = /^[a-zA-Z ]{6,}$/;
+    return nameRegex.test(name);
+  };
+
+  const validateUsername = (username: string): boolean => {
+    const usernameRegex = /^[a-zA-Z0-9]{6,}$/;
+    return usernameRegex.test(username);
+  };
+
+  const validatePassword = (password: string): boolean => {
+    const length = password.length >= 6;
+    const uppercase = /[A-Z]/.test(password);
+    const lowercase = /[a-z]/.test(password);
+    const number = /\d/.test(password);
+    const specialChar = /[!@#$%^&*]/.test(password);
+
+    setPasswordFeedback({ length, uppercase, lowercase, number, specialChar });
+    return length && uppercase && lowercase && number && specialChar;
+  };
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    const toast = toastRef.current;
+    if (!toast) return;
+
+    const shiftX = e.clientX - toast.getBoundingClientRect().left;
+    const shiftY = e.clientY - toast.getBoundingClientRect().top;
+
+    const onMouseMove = (event: MouseEvent) => {
+      toast.style.left = `${event.clientX - shiftX}px`;
+      toast.style.top = `${event.clientY - shiftY}px`;
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+
+    document.addEventListener(
+      "mouseup",
+      () => {
+        document.removeEventListener("mousemove", onMouseMove);
+      },
+      { once: true }
+    );
+
+    setIsToastDragged(true);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const username = data.get("username");
-    const password = data.get("password");
 
-    getJwt(username, password);
-  };
-  async function getJwt(username, password) {
-    try {
-      const userJwt = await auth.login({ username, password });
-      newLogin(userJwt)!;
-      console.log(userJwt);
-      document.cookie = `auth=${userJwt}; path=/; secure; SameSite=Strict`;
-      navigate("/");
-    } catch (error) {
-      console.error("Login failed:", error);
+    const name = authType === AuthType.Signup ? (data.get("name") as string) : undefined;
+    const username = data.get("username") as string;
+    const password = data.get("password") as string;
+
+    const nameValid = authType === AuthType.Signup ? validateName(name || "") : true;
+    const usernameValid = validateUsername(username);
+    const passwordValid = validatePassword(password);
+
+    if (authType === AuthType.Signup && (!nameValid || !usernameValid || !passwordValid)) {
+      setShowValidationToast(true);
+      setError("Some fields do not meet the requirements.");
+      return;
     }
-  }
+
+    try {
+      let jwt: string;
+      if (authType === AuthType.Login) {
+        jwt = await auth.login({ username, password });
+      } else {
+        jwt = await auth.signup({ username, password, name });
+      }
+
+      newLogin(jwt);
+      document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
+      navigate("/");
+    } catch (err) {
+      console.error("Authentication failed:", err);
+      setError("Authentication failed. Please try again.");
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6 bg-white shadow-md rounded-md">
-        <h1 className="text-2xl font-bold text-center mb-6">Sign In</h1>
+        <h1 className="text-2xl font-bold text-center mb-6">
+          {authType === AuthType.Login ? "Sign In" : "Sign Up"}
+        </h1>
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {authType === AuthType.Signup && (
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
           <div>
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
               Username
             </label>
             <input
@@ -857,114 +954,139 @@ export default function LoginPage() {
               name="username"
               type="text"
               required
-              autoComplete="username"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              defaultValue={"bob000"}
             />
           </div>
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <div className="relative">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              defaultValue={"123456"}
-            />
+            <div className="flex items-center mt-1">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                onChange={(e) => validatePassword(e.target.value)}
+                onFocus={() => authType === AuthType.Signup && setShowValidationToast(true)}
+                className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="ml-2 text-gray-500 hover:text-gray-700"
+                title={showPassword ? "Hide Password" : "Show Password"}
+              >
+                {showPassword ? <EyeOff /> : <Eye />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"
             className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Sign In
+            {authType === AuthType.Login ? "Sign In" : "Sign Up"}
           </button>
-          <div className="flex justify-between items-center text-sm">
-            <a href="#" className="text-blue-500 hover:underline">
-              Forgot password?
-            </a>
-            <a href="#" className="text-blue-500 hover:underline">
-              Don't have an account? Sign Up
-            </a>
+          <div className="flex justify-between items-center text-sm mt-4">
+            <button
+              type="button"
+              onClick={() =>
+                setAuthType(authType === AuthType.Login ? AuthType.Signup : AuthType.Login)
+              }
+              className="text-blue-500 hover:underline"
+            >
+              {authType === AuthType.Login
+                ? "Don't have an account? Sign Up"
+                : "Already have an account? Sign In"}
+            </button>
           </div>
         </form>
       </div>
+
+      {authType === AuthType.Signup && showValidationToast && (
+        <div
+          ref={toastRef}
+          className={`absolute top-4 right-4 bg-white shadow-lg rounded-md p-4 border ${
+            isToastDragged ? "cursor-move" : "cursor-pointer"
+          }`}
+          onMouseDown={handleDragStart}
+        >
+          <h2 className="text-lg font-semibold text-gray-700">Validation Requirements</h2>
+          <ul className="mt-2 text-sm text-gray-600">
+            <li className={passwordFeedback.length ? "text-green-500" : "text-red-500"}>
+              At least 6 characters
+            </li>
+            <li className={passwordFeedback.uppercase ? "text-green-500" : "text-red-500"}>
+              At least one uppercase letter
+            </li>
+            <li className={passwordFeedback.lowercase ? "text-green-500" : "text-red-500"}>
+              At least one lowercase letter
+            </li>
+            <li className={passwordFeedback.number ? "text-green-500" : "text-red-500"}>
+              At least one number
+            </li>
+            <li className={passwordFeedback.specialChar ? "text-green-500" : "text-red-500"}>
+              At least one special character (!@#$%^&*)
+            </li>
+          </ul>
+          <button
+            onClick={() => setShowValidationToast(false)}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 # components/layout/logout/logout.tsx
-import React, { useEffect } from 'react';
-import { Container, Typography, Box, Button } from '@mui/material';
+import React, { useEffect, useContext } from 'react';
 import Cookies from 'js-cookie';
+import { AuthContext } from '../../auth/Auth';
 
 const LogoutPage = () => {
+    const auth = useContext(AuthContext);
+
     useEffect(() => {
+        // Call the logout function from context
+        if (auth) {
+            auth.logout();
+        }
+
         // Delete the 'auth' cookie
         Cookies.remove('auth');
 
-        // Redirect to the home page after a delay (optional)
+        // Redirect to the home page after a delay
         const timer = setTimeout(() => {
             window.location.href = '/';
         }, 3000);
 
         return () => clearTimeout(timer);
-    }, []);
+    }, [auth]);
 
     return (
-        <Container
-            maxWidth={false}
-            disableGutters
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#f5f5f5',
-                zIndex: 9999,
-                textAlign: 'center',
-            }}
-        >
-            <Box
-                sx={{
-                    padding: 4,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    backgroundColor: 'white',
-                }}
-            >
-                <Typography variant="h4" gutterBottom>
-                    Thank You!
-                </Typography>
-                <Typography variant="body1" gutterBottom>
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-100 text-center">
+            <div className="p-6 bg-white rounded-2xl shadow-lg">
+                <h1 className="text-2xl font-bold mb-4">Thank You!</h1>
+                <p className="text-gray-700 mb-4">
                     Thanks for using our social media software. We hope to see you again soon!
-                </Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => { window.location.href = '/'; }}
-                    sx={{ mt: 2 }}
+                </p>
+                <button
+                    className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onClick={() => {
+                        window.location.href = '/';
+                    }}
                 >
                     Go to Homepage
-                </Button>
-            </Box>
-        </Container>
+                </button>
+            </div>
+        </div>
     );
 };
 
 export default LogoutPage;
-
 # components/layout/not-found/NotFound.css
 
 # components/layout/not-found/NotFound.tsx
@@ -1010,12 +1132,13 @@ export default function Routing(): JSX.Element {
 
 # components/posts/feed/Feed.tsx
 // Feed.tsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import PostModel from '../../../models/posts/Post';
 import feed from '../../../services/Feed';
 import profileService from '../../../services/Profile';
-import FeedPost from './FeedPost';
 import Loading from '../../common/Loading';
-import PostModel from '../../../models/posts/Post';
+import { handleError } from '../../utils/errors';
+import FeedPost from './FeedPost';
 
 export default function Feed() {
   const [posts, setPosts] = useState<PostModel[]>([]);
@@ -1032,8 +1155,8 @@ export default function Feed() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setPosts(sortedPosts);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while fetching the feed.');
+    } catch (error) {
+      console.error('Error deleting post:', handleError(error));
     } finally {
       setLoading(false);
     }
@@ -1475,12 +1598,12 @@ export default function NewPost({ onAddPost }: NewPostProps) {
   
 # components/posts/post/Post.tsx
 // components/posts/post/Post.tsx
-import React, { useState } from "react";
-import { useAppDispatch } from "../../../redux/hooks";
-import PostModel from "../../../models/posts/Post";
-import PostsUi from "./PostUi";
+import { useState } from "react";
 import useService from "../../../hooks/useService";
+import PostModel from "../../../models/posts/Post";
+import { useAppDispatch } from "../../../redux/hooks";
 import ProfileService from "../../../services/auth-aware/Profile";
+import PostsUi from "./PostUi";
 
 interface PostProps {
   post: PostModel;
@@ -1900,13 +2023,13 @@ export default function PostsUi({
   
 # components/posts/profile/Profile.tsx
 // components/posts/profile/Profile.tsx
-import React, { useEffect } from 'react';
-import { useAppSelector } from '../../../redux/hooks';
+import { useEffect } from 'react';
 import { useProfile } from '../../../hooks/useProfile';
+import useTitle from '../../../hooks/useTitle';
+import { useAppSelector } from '../../../redux/hooks';
+import Loading from '../../common/Loading';
 import NewPost from '../new/NewPost';
 import Post from '../post/Post';
-import Loading from '../../common/Loading';
-import useTitle from '../../../hooks/useTitle';
 import './Profile.css';
 
 export default function Profile() {
@@ -1916,7 +2039,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  },[]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -1955,6 +2078,56 @@ export default function Profile() {
     </div>
   );
 }
+# components/utils/errors.ts
+// Custom error types
+export class AppError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'AppError';
+    }
+  }
+  
+  export class NetworkError extends AppError {
+    constructor(message: string, public statusCode?: number) {
+      super(message);
+      this.name = 'NetworkError';
+    }
+  }
+  
+  export class ValidationError extends AppError {
+    constructor(message: string, public field?: string) {
+      super(message);
+      this.name = 'ValidationError';
+    }
+  }
+  
+  // Type guard to check if an error is an instance of AppError
+  export function isAppError(error: unknown): error is AppError {
+    return error instanceof AppError;
+  }
+  
+  // Helper function to handle errors
+  export function handleError(error: unknown): string {
+    if (isAppError(error)) {
+      return error.message;
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return 'An unknown error occurred';
+  }
+  
+  // API error handler
+  export async function handleApiError<T>(
+    promise: Promise<T>
+  ): Promise<[T | null, string | null]> {
+    try {
+      const data = await promise;
+      return [data, null];
+    } catch (error) {
+      return [null, handleError(error)];
+    }
+  }
 # hooks/useComments.ts
 import { useAppDispatch } from '../redux/hooks';
 import { addComment as addCommentAction } from '../redux/slices/profileSlice';
@@ -2090,6 +2263,7 @@ import { setLoading, setError, setPosts, addPost, updatePost, removePost, addCom
 import Profile from '../services/auth-aware/Profile';
 import PostDraft from '../models/posts/PostDraft';
 import useService from './useService';
+import { isAppError } from '../components/utils/errors';
 
 export const useProfile = () => {
   const dispatch = useAppDispatch();
@@ -2100,8 +2274,8 @@ export const useProfile = () => {
     try {
       const posts = await profileService.getProfile();
       dispatch(setPosts(posts));
-    } catch (error) {
-      if (error instanceof Error) {
+    } catch (error: unknown) {
+      if (isAppError(error)) {
         dispatch(setError(error.message));
       } else {
         dispatch(setError('An unknown error occurred'));
@@ -2117,11 +2291,12 @@ export const useProfile = () => {
       const post = await profileService.addPost(newPost);
       dispatch(addPost(post));
       return post;
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
-    } finally {
-      dispatch(setLoading(false));
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     }
   };
 
@@ -2131,9 +2306,12 @@ export const useProfile = () => {
       const post = await profileService.updatePost(id, updatedPost);
       dispatch(updatePost(post));
       return post;
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     } finally {
       dispatch(setLoading(false));
     }
@@ -2144,9 +2322,12 @@ export const useProfile = () => {
     try {
       await profileService.removePost(id);
       dispatch(removePost(id));
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     } finally {
       dispatch(setLoading(false));
     }
@@ -2157,9 +2338,12 @@ export const useProfile = () => {
       const comment = await profileService.addComment(postId, body);
       dispatch(addComment({ postId, comment }));
       return comment;
-    } catch (error: any) {
-      dispatch(setError(error.message));
-      throw error;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
     }
   };
 
@@ -2310,6 +2494,12 @@ export default interface PostDraft {
 export default interface Login {
     username: string;
     password: string;
+}
+# models/users/Signup.ts
+import Login from "./Login";
+
+export default interface Signup extends Login {
+    name:string;
 }
 # models/users/Users.ts
 import Login from "./Login";
@@ -2655,84 +2845,93 @@ export class FollowersService extends AuthAware {
 }
 # services/auth-aware/Profile.ts
 // services/auth-aware/Profile.ts
-import axios from "axios";
+import Comment from "../../models/comment/Comments";
 import Post from "../../models/posts/Post";
 import PostDraft from "../../models/posts/PostDraft";
-import Comment from "../../models/comment/Comments";
 import AuthAware from "./AuthAware";
 
 export default class Profile extends AuthAware {
-    private baseUrl = import.meta.env.VITE_REST_SERVER_URL_SAFE;
+  private baseUrl = import.meta.env.VITE_REST_SERVER_URL_SAFE;
 
-    async getProfile(): Promise<Post[]> {
-        try {
-            console.log("Fetching posts from:", `${this.baseUrl}/posts`);
-            const response = await this.axiosInstance.get<Post[]>(`${this.baseUrl}/posts`);
-            console.log("API Response:", response.data);
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching posts:", error);
-            throw error;
-        }
+  async getProfile(): Promise<Post[]> {
+    try {
+      console.log("Fetching posts from:", `${this.baseUrl}/posts`);
+      const response = await this.axiosInstance.get<Post[]>(
+        `${this.baseUrl}/posts`
+      );
+      console.log("API Response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      throw error;
     }
+  }
 
-    async addPost(post: PostDraft): Promise<Post> {
-        try {
-            const response = await this.axiosInstance.post(
-                `${this.baseUrl}/posts`,
-                post
-            );
-            return response.data;
-        } catch (error) {
-            console.error("Error adding post:", error);
-            throw error;
-        }
+  async addPost(post: PostDraft): Promise<Post> {
+    try {
+      const response = await this.axiosInstance.post(
+        `${this.baseUrl}/posts`,
+        post
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error adding post:", error);
+      throw error;
     }
+  }
 
-    async updatePost(id: string, post: PostDraft): Promise<Post> {
-        try {
-            const response = await this.axiosInstance.patch(
-                `${this.baseUrl}/posts/${id}`,
-                post
-            );
-            return response.data;
-        } catch (error) {
-            console.error("Error updating post:", error);
-            throw error;
-        }
+  async updatePost(id: string, post: PostDraft): Promise<Post> {
+    try {
+      const response = await this.axiosInstance.patch(
+        `${this.baseUrl}/posts/${id}`,
+        post
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating post:", error);
+      throw error;
     }
+  }
 
-    async removePost(id: string): Promise<void> {
-        try {
-            await this.axiosInstance.delete(`${this.baseUrl}/posts/${id}`);
-        } catch (error) {
-            console.error("Error removing post:", error);
-            throw error;
-        }
+  async removePost(id: string): Promise<void> {
+    try {
+      await this.axiosInstance.delete(`${this.baseUrl}/posts/${id}`);
+    } catch (error) {
+      console.error("Error removing post:", error);
+      throw error;
     }
+  }
 
-    async addComment(postId: string, body: string): Promise<Comment> {
-        try {
-            const response = await this.axiosInstance.post(
-                `${this.baseUrl}/comments/${postId}`,
-                { body }
-            );
-            return response.data;
-        } catch (error) {
-            console.error("Error adding comment:", error);
-            throw error;
-        }
+  async addComment(postId: string, body: string): Promise<Comment> {
+    try {
+      const response = await this.axiosInstance.post(
+        `${this.baseUrl}/comments/${postId}`,
+        { body }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      throw error;
     }
+  }
 }
+
 # services/auth.ts
 import axios from "axios";
 import Login from "../models/users/Login";
+import Signup from "../models/users/Signup";
 
 class Auth {
     async login(login: Login) {
         const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, login);
     return response.data.jwt;
     }
+    
+    async signup(signup: Signup) {
+        const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/signup`, signup);
+    return response.data.jwt;
+    }
+
 }
 const auth = new Auth();
 export default auth;

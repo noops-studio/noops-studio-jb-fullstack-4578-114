@@ -15,7 +15,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchPosts();
-  },);
+  },[]);
 
   const handleDelete = async (id: string) => {
     try {

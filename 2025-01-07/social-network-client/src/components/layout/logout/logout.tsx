@@ -1,63 +1,44 @@
-import React, { useEffect } from 'react';
-import { Container, Typography, Box, Button } from '@mui/material';
+import React, { useEffect, useContext } from 'react';
 import Cookies from 'js-cookie';
+import { AuthContext } from '../../auth/Auth';
 
 const LogoutPage = () => {
+    const auth = useContext(AuthContext);
+
     useEffect(() => {
+        // Call the logout function from context
+        if (auth) {
+            auth.logout();
+        }
+
         // Delete the 'auth' cookie
         Cookies.remove('auth');
 
-        // Redirect to the home page after a delay (optional)
+        // Redirect to the home page after a delay
         const timer = setTimeout(() => {
             window.location.href = '/';
         }, 3000);
 
         return () => clearTimeout(timer);
-    }, []);
+    }, [auth]);
 
     return (
-        <Container
-            maxWidth={false}
-            disableGutters
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#f5f5f5',
-                zIndex: 9999,
-                textAlign: 'center',
-            }}
-        >
-            <Box
-                sx={{
-                    padding: 4,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    backgroundColor: 'white',
-                }}
-            >
-                <Typography variant="h4" gutterBottom>
-                    Thank You!
-                </Typography>
-                <Typography variant="body1" gutterBottom>
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-100 text-center">
+            <div className="p-6 bg-white rounded-2xl shadow-lg">
+                <h1 className="text-2xl font-bold mb-4">Thank You!</h1>
+                <p className="text-gray-700 mb-4">
                     Thanks for using our social media software. We hope to see you again soon!
-                </Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => { window.location.href = '/'; }}
-                    sx={{ mt: 2 }}
+                </p>
+                <button
+                    className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onClick={() => {
+                        window.location.href = '/';
+                    }}
                 >
                     Go to Homepage
-                </Button>
-            </Box>
-        </Container>
+                </button>
+            </div>
+        </div>
     );
 };
 
