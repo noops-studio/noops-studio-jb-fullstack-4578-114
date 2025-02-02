@@ -15,8 +15,6 @@ const requestListener = (request, Response) => {
     console.log("Request to /user endpoint");
     Response.write(JSON.stringify(user));
   } else if (request.url === "/") {
-    console.log(404)
-    Response.write("404");
     console.log("Request to / endpoint");
   }
   Response.end();
