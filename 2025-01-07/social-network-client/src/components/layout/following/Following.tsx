@@ -7,7 +7,10 @@ import { useFollowing } from "../../../hooks/useFollowing";
 import { useFollowers } from "../../../hooks/useFollowers";
 
 export default function Following(): JSX.Element {
-  const following = useAppSelector((state) => state.following.following);
+  const following = useAppSelector((state) => state.following.following).map(user => ({
+    ...user,
+    isFollowing: true // or any logic to determine if the user is being followed
+  }));
   const { fetchFollowing } = useFollowing();
   const { unfollow } = useFollowers();
 

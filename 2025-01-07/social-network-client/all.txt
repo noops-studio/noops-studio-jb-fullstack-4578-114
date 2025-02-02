@@ -31,7 +31,7 @@ import { createContext, PropsWithChildren, useState } from "react";
 
 interface AuthContextInterface {
     jwt: string;
-    newLogin: React.Dispatch<React.SetStateAction<string>>;
+    newLogin: (jwt: string) => void; // Change from React.Dispatch
     logout: () => void;
 }
 
@@ -60,11 +60,11 @@ export default function Auth(props: PropsWithChildren): JSX.Element {
     )
 }
 # components/common/Loading.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 interface LoadingProps {
   isLoading: boolean;
-  error?: string;
+  error?: string | null;
   onRetry?: () => void;
 }
 
@@ -137,7 +137,6 @@ export default function setTitle(title: string) {
     }, [title]);
 }
 # components/common/TinyEditor.tsx
-import React from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 
 interface TinyEditorProps {
@@ -177,9 +176,8 @@ export default function TinyEditor({
 }
 
 # components/layout/editPost/EditPost.tsx
-import React, { useState } from "react";
-import EditPostUi from "./EditPostUi";
 import PostModel from "../../../models/posts/Post";
+import EditPostUi from "./EditPostUi";
 
 interface EditPostProps {
   post: PostModel;
@@ -233,7 +231,7 @@ export default function EditPost({ post, onDelete, onSavePost }: EditPostProps) 
 }
 
 # components/layout/editPost/EditPostUi.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import TinyEditor from '../../common/TinyEditor';
 
 interface EditPostUiProps {
@@ -374,7 +372,10 @@ import { useFollowing } from "../../../hooks/useFollowing";
 import { useFollowers } from "../../../hooks/useFollowers";
 
 export default function Following(): JSX.Element {
-  const following = useAppSelector((state) => state.following.following);
+  const following = useAppSelector((state) => state.following.following).map(user => ({
+    ...user,
+    isFollowing: true // or any logic to determine if the user is being followed
+  }));
   const { fetchFollowing } = useFollowing();
   const { unfollow } = useFollowers();
 
@@ -623,11 +624,8 @@ export default function Header() {
 }
 
 # components/layout/header/MuiHeader.tsx
-import React, { useContext, useMemo, useState } from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { AuthContext } from "../../auth/Auth";
-import { jwtDecode } from "jwt-decode";
-import User from "../../../models/users/Users";
 
 interface Link {
   path: string;
@@ -749,14 +747,14 @@ export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({
 
 # components/layout/layout/Layout.tsx
 // components/layout/layout/Layout.tsx
-import React, { useContext } from "react";
-import { Navigate, Outlet } from "react-router-dom";
-import Folowers from "../folowers/Folowers";
+import { useContext } from "react";
+import { Outlet } from "react-router-dom";
+import { AuthContext } from "../../auth/Auth";
 import Followings from "../following/Following";
+import Folowers from "../folowers/Folowers";
 import Footer from "../footer/Footer";
 import Header from "../header/Header";
 import LoginPage from "../login/login";
-import { AuthContext } from "../../auth/Auth";
 
 // Utility function to check if the user is authenticated
 
@@ -907,12 +905,14 @@ export default function LoginPage() {
     }
 
     try {
-      let jwt: string;
-      if (authType === AuthType.Login) {
-        jwt = await auth.login({ username, password });
-      } else {
-        jwt = await auth.signup({ username, password, name });
+      // let jwt: string;
+      const name = data.get("name") as string;
+      if (authType === AuthType.Signup && !name) {
+        setError("Name is required");
+        return;
       }
+      const jwt = await auth.signup({ username, password, name });
+
 
       newLogin(jwt);
       document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
@@ -1042,8 +1042,8 @@ export default function LoginPage() {
 }
 
 # components/layout/logout/logout.tsx
-import React, { useEffect, useContext } from 'react';
 import Cookies from 'js-cookie';
+import { useContext, useEffect } from 'react';
 import { AuthContext } from '../../auth/Auth';
 
 const LogoutPage = () => {
@@ -1133,6 +1133,7 @@ export default function Routing(): JSX.Element {
 # components/posts/feed/Feed.tsx
 // Feed.tsx
 import { useEffect, useState } from 'react';
+import { useAppSelector } from '../../../redux/hooks';
 import PostModel from '../../../models/posts/Post';
 import feed from '../../../services/Feed';
 import profileService from '../../../services/Profile';
@@ -1144,32 +1145,39 @@ export default function Feed() {
   const [posts, setPosts] = useState<PostModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get the following list from Redux store
+  const following = useAppSelector((state) => state.following.following);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await feed.getFeed();
-      // Sort posts by date (newest first)
-      const sortedPosts = data.sort((a, b) => 
+      // Filter posts to only show those from users we're following
+      const filteredPosts = data.filter(post => 
+        following.some(user => user.id === post.userId)
+      );
+      // Sort filtered posts by date (newest first)
+      const sortedPosts = filteredPosts.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setPosts(sortedPosts);
     } catch (error) {
-      console.error('Error deleting post:', handleError(error));
+      console.error('Error fetching posts:', handleError(error));
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch posts whenever the following list changes
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [following]); // Add following as a dependency
 
   const handleAddComment = async (postId: string, comment: string) => {
     try {
       const newComment = await profileService.addComment(postId, comment);
-      // Update the posts state with the new comment
       setPosts(currentPosts => 
         currentPosts.map(post => {
           if (post.id === postId) {
@@ -1432,11 +1440,11 @@ export default FeedPost;
 
 # components/posts/new/NewPost.tsx
 // components/posts/new/NewPost.tsx
-import React, { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 import PostDraft from "../../../models/posts/PostDraft";
-import TinyEditor from "../../common/TinyEditor";
 import Loading from "../../common/Loading";
+import TinyEditor from "../../common/TinyEditor";
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;
@@ -1706,10 +1714,10 @@ export default function Post({ post, onDelete }: PostProps): JSX.Element {
   
 # components/posts/post/PostUi.tsx
 // components/posts/post/PostUi.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { useComments } from '../../../hooks/useComments';
-import TinyEditor from '../../common/TinyEditor';
 import PostModel from "../../../models/posts/Post";
+import TinyEditor from '../../common/TinyEditor';
 
 interface PostsUiProps {
   post: PostModel;
@@ -1772,6 +1780,7 @@ export default function PostsUi({
     try {
       await addComment(post.id, newComment);
       setNewComment("");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setCommentError("Failed to add comment. Please try again.");
     } finally {
@@ -2185,7 +2194,7 @@ export const useComments = () => {
 };
 # hooks/useFollowers.ts
 import { useAppDispatch } from '../redux/hooks';
-import { setFollowers, removeFollower, addFollower } from '../redux/slices/followersSlice';
+import { setFollowers } from '../redux/slices/followersSlice';
 import { removeFollowing } from '../redux/slices/followingSlice';
 import { FollowersService } from '../services/auth-aware/FollowersService';
 import useService from './useService';
@@ -2422,7 +2431,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './assets/output.css'
 import App from './components/app/App.tsx'
-import * as Sentry from "@sentry/react";
+// import * as Sentry from "@sentry/react";
 
 
 
@@ -2582,7 +2591,7 @@ export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
 # redux/slices/authSlice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -2767,9 +2776,8 @@ export default abstract class AuthAware {
     }
 }
 # services/auth-aware/CommentService.ts
-import AuthAware from "./AuthAware";
 import Comment from "../../models/comment/Comments";
-import CommentDraft from "../../models/comment/CommentDraft";
+import AuthAware from "./AuthAware";
 
 export class CommentService extends AuthAware {
   async addComment(postId: string, body: string): Promise<Comment> {
@@ -2818,7 +2826,6 @@ export class CommentService extends AuthAware {
   }
 }
 # services/auth-aware/FollowersService.ts
-import { AxiosInstance } from "axios";
 import User from "../../models/users/Users";
 import AuthAware from "./AuthAware";
 

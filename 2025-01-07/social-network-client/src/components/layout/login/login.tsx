@@ -93,12 +93,14 @@ export default function LoginPage() {
     }
 
     try {
-      let jwt: string;
-      if (authType === AuthType.Login) {
-        jwt = await auth.login({ username, password });
-      } else {
-        jwt = await auth.signup({ username, password, name });
+      // let jwt: string;
+      const name = data.get("name") as string;
+      if (authType === AuthType.Signup && !name) {
+        setError("Name is required");
+        return;
       }
+      const jwt = await auth.signup({ username, password, name });
+
 
       newLogin(jwt);
       document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;

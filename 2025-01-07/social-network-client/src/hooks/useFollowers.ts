@@ -1,5 +1,5 @@
 import { useAppDispatch } from '../redux/hooks';
-import { setFollowers, removeFollower, addFollower } from '../redux/slices/followersSlice';
+import { setFollowers } from '../redux/slices/followersSlice';
 import { removeFollowing } from '../redux/slices/followingSlice';
 import { FollowersService } from '../services/auth-aware/FollowersService';
 import useService from './useService';

@@ -1,8 +1,8 @@
 // components/posts/post/PostUi.tsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { useComments } from '../../../hooks/useComments';
-import TinyEditor from '../../common/TinyEditor';
 import PostModel from "../../../models/posts/Post";
+import TinyEditor from '../../common/TinyEditor';
 
 interface PostsUiProps {
   post: PostModel;
@@ -65,6 +65,7 @@ export default function PostsUi({
     try {
       await addComment(post.id, newComment);
       setNewComment("");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setCommentError("Failed to add comment. Please try again.");
     } finally {

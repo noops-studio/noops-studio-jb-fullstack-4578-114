@@ -1,9 +1,9 @@
 // components/posts/new/NewPost.tsx
-import React, { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 import PostDraft from "../../../models/posts/PostDraft";
-import TinyEditor from "../../common/TinyEditor";
 import Loading from "../../common/Loading";
+import TinyEditor from "../../common/TinyEditor";
 
 interface NewPostProps {
   onAddPost: (newPost: PostDraft) => void;

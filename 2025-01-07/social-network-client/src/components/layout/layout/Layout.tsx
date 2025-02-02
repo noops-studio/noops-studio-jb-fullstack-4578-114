@@ -1,12 +1,12 @@
 // components/layout/layout/Layout.tsx
-import React, { useContext } from "react";
-import { Navigate, Outlet } from "react-router-dom";
-import Folowers from "../folowers/Folowers";
+import { useContext } from "react";
+import { Outlet } from "react-router-dom";
+import { AuthContext } from "../../auth/Auth";
 import Followings from "../following/Following";
+import Folowers from "../folowers/Folowers";
 import Footer from "../footer/Footer";
 import Header from "../header/Header";
 import LoginPage from "../login/login";
-import { AuthContext } from "../../auth/Auth";
 
 // Utility function to check if the user is authenticated
 

@@ -1,6 +1,5 @@
-import AuthAware from "./AuthAware";
 import Comment from "../../models/comment/Comments";
-import CommentDraft from "../../models/comment/CommentDraft";
+import AuthAware from "./AuthAware";
 
 export class CommentService extends AuthAware {
   async addComment(postId: string, body: string): Promise<Comment> {

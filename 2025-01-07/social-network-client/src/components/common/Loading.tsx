@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 interface LoadingProps {
   isLoading: boolean;
-  error?: string;
+  error?: string | null;
   onRetry?: () => void;
 }
 

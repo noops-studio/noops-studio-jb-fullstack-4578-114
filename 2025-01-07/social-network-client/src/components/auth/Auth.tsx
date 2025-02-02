@@ -2,7 +2,7 @@ import { createContext, PropsWithChildren, useState } from "react";
 
 interface AuthContextInterface {
     jwt: string;
-    newLogin: React.Dispatch<React.SetStateAction<string>>;
+    newLogin: (jwt: string) => void; // Change from React.Dispatch
     logout: () => void;
 }
 

@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import EditPostUi from "./EditPostUi";
 import PostModel from "../../../models/posts/Post";
+import EditPostUi from "./EditPostUi";
 
 interface EditPostProps {
   post: PostModel;

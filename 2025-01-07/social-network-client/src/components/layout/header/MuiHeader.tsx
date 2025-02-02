@@ -1,8 +1,5 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { AuthContext } from "../../auth/Auth";
-import { jwtDecode } from "jwt-decode";
-import User from "../../../models/users/Users";
 
 interface Link {
   path: string;

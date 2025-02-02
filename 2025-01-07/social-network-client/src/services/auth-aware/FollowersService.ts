@@ -1,4 +1,3 @@
-import { AxiosInstance } from "axios";
 import User from "../../models/users/Users";
 import AuthAware from "./AuthAware";
 

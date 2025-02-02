@@ -1,5 +1,6 @@
 // Feed.tsx
 import { useEffect, useState } from 'react';
+import { useAppSelector } from '../../../redux/hooks';
 import PostModel from '../../../models/posts/Post';
 import feed from '../../../services/Feed';
 import profileService from '../../../services/Profile';
@@ -11,32 +12,39 @@ export default function Feed() {
   const [posts, setPosts] = useState<PostModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get the following list from Redux store
+  const following = useAppSelector((state) => state.following.following);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await feed.getFeed();
-      // Sort posts by date (newest first)
-      const sortedPosts = data.sort((a, b) => 
+      // Filter posts to only show those from users we're following
+      const filteredPosts = data.filter(post => 
+        following.some(user => user.id === post.userId)
+      );
+      // Sort filtered posts by date (newest first)
+      const sortedPosts = filteredPosts.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setPosts(sortedPosts);
     } catch (error) {
-      console.error('Error deleting post:', handleError(error));
+      console.error('Error fetching posts:', handleError(error));
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch posts whenever the following list changes
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [following]); // Add following as a dependency
 
   const handleAddComment = async (postId: string, comment: string) => {
     try {
       const newComment = await profileService.addComment(postId, comment);
-      // Update the posts state with the new comment
       setPosts(currentPosts => 
         currentPosts.map(post => {
           if (post.id === postId) {

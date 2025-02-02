@@ -1,5 +1,5 @@
-import React, { useEffect, useContext } from 'react';
 import Cookies from 'js-cookie';
+import { useContext, useEffect } from 'react';
 import { AuthContext } from '../../auth/Auth';
 
 const LogoutPage = () => {
