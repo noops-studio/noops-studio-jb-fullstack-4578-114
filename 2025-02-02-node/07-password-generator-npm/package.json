@@ -1,0 +1,12 @@
+{
+  "name": "noops-studio-password-generator",
+  "version": "1.3.0",
+  "main": "password-generator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
