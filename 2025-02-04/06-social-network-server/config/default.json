@@ -1,0 +1,6 @@
+{
+    "app": {
+        "port": 8080,
+        "name": "twitter death"
+    }
+}
