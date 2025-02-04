@@ -1,9 +1,9 @@
-import  express from "express";
-import config from "config";
-const app = express();
-// const PORT = process.env.PORT || 3000;
-const PORT = config.get<number>("app.port");
+import express from "express"
+import config from 'config'
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
+const port = config.get<string>('app.port')
+const name = config.get<string>('app.name')
+
+const app = express()
+
+app.listen(port, () => console.log(`${name} started on port ${port}...`))

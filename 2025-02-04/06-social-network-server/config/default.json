@@ -1,6 +1,9 @@
 {
     "app": {
-        "port": 8080,
-        "name": "twitter death"
+        "port": "3000",
+        "name": "twitter dev"
+    },
+    "db": {
+        "password": ""
     }
 }
