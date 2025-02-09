@@ -1,7 +1,18 @@
-import { AllowNull, Column, DataType, Default, Model, PrimaryKey, Table } from "sequelize-typescript";
+import { 
+    AllowNull, 
+    Column, 
+    DataType, 
+    Default, 
+    HasMany, 
+    Index, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import Post from "./post";
 
 @Table({
-    underscored: true
+    underscored: true,
 })
 export default class User extends Model{
 
@@ -11,14 +22,21 @@ export default class User extends Model{
     id: string
     
     @AllowNull(false)
-    @Column
+    @Column(DataType.STRING(40))
     name: string
     
+    @Index({ unique: true })
     @AllowNull(false)
-    @Column
+    @Column(DataType.STRING(40))
     username: string
     
     @AllowNull(false)
-    @Column
+    @Column(DataType.STRING(32))
     password: string
+
+    @HasMany(() => Post,{
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+    })
+    posts: Post[]
 }
