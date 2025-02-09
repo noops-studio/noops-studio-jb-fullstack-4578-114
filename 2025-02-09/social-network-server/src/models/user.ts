@@ -34,10 +34,10 @@ export default class User extends Model{
     username: string
     
     @AllowNull(false)
-    @Column(DataType.STRING(32))
+    @Column(DataType.STRING(64))
     password: string
 
-    @HasMany(() => Post,{
+    @HasMany(() => Post, {
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE'
     })
@@ -46,10 +46,10 @@ export default class User extends Model{
     @HasMany(() => Comment)
     comments: Comment[]
 
-
-    @BelongsToMany(() => User,()=> Follow, 'followerId')
+    @BelongsToMany(() => User, () => Follow, 'followeeId', 'followerId')
     followers: User[]
 
-    @BelongsToMany(() => User,()=> Follow, 'followeeId')
+    @BelongsToMany(() => User, () => Follow, 'followerId', 'followeeId')
     following: User[]
+
 }

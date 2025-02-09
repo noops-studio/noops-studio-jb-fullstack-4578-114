@@ -15,13 +15,13 @@ import User from "./user";
 })
 export default class Follow extends Model{
 
-    @ForeignKey(() => User)
     @PrimaryKey
+    @ForeignKey(() => User)
     @Column(DataType.UUID)
     followerId: string
 
-    @ForeignKey(() => User)
     @PrimaryKey
+    @ForeignKey(() => User)
     @Column(DataType.UUID)
     followeeId: string
 }

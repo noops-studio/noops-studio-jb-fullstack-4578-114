@@ -6,7 +6,6 @@ import {
     Default, 
     ForeignKey, 
     HasMany, 
-    Index, 
     Model, 
     PrimaryKey, 
     Table 
@@ -23,7 +22,7 @@ export default class Post extends Model{
     @Default(DataType.UUIDV4)
     @Column(DataType.UUID)
     id: string
-
+    
     @ForeignKey(() => User)
     @AllowNull(false)
     @Column(DataType.UUID)
@@ -37,9 +36,14 @@ export default class Post extends Model{
     @Column(DataType.TEXT)
     body: string
 
+    @AllowNull(true)
+    @Column(DataType.STRING(255))
+    imageUrl: string
+
     @BelongsTo(() => User)
     user: User
 
     @HasMany(() => Comment)
     comments: Comment[]
+
 }

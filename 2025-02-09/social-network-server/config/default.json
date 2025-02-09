@@ -12,8 +12,8 @@
     },
     "sequelize": {
         "logging": true,
-        "sync":{
-            "force": true
+        "sync": {
+            "force": false
         }
     }
 }

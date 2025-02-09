@@ -13,7 +13,7 @@ import Post from "./post";
 import User from "./user";
 
 @Table({
-    underscored: true
+    underscored: true,
 })
 export default class Comment extends Model{
 
@@ -38,5 +38,8 @@ export default class Comment extends Model{
 
     @BelongsTo(() => Post)
     post: Post
+
+    @BelongsTo(() => User)
+    user: User
 
 }

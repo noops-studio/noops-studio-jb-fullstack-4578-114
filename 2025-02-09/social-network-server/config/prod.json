@@ -4,7 +4,7 @@
     },
     "sequelize": {
         "logging": false,
-        "sync":{
+        "sync": {
             "force": false
         }
     }
