@@ -10,7 +10,7 @@ import {
     Table 
 } from "sequelize-typescript";
 import Post from "./post";
-import User from "./user";
+import User from "./User";
 
 @Table({
     underscored: true,

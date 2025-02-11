@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 export const newCommentValidator = Joi.object({
-    postId: Joi.string().uuid().required(),
-    userId: Joi.string().uuid().required(),
-    body: Joi.string().min(1).required()
+    body: Joi.string().min(20).required()
 });
+
+export const editCommentValidator = newCommentValidator;

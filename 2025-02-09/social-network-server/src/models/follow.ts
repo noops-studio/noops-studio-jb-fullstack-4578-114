@@ -8,7 +8,7 @@ import {
     PrimaryKey, 
     Table 
 } from "sequelize-typescript";
-import User from "./user";
+import User from "./User";
 
 @Table({
     underscored: true

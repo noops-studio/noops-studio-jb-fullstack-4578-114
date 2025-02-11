@@ -1,7 +1,8 @@
 import Joi from "joi";
-import { title } from "process";
 
 export const newPostValidator = Joi.object({
-    title: Joi.string().required().min(10).max(40),
-    body: Joi.string().required().min(10)
+    title: Joi.string().min(10).required(),
+    body: Joi.string().min(20).required()
 });
+
+export const editPostValidator = newPostValidator;

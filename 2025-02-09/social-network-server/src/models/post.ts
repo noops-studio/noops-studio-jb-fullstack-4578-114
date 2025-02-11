@@ -10,7 +10,7 @@ import {
     PrimaryKey, 
     Table 
 } from "sequelize-typescript";
-import User from "./user";
+import User from "./User";
 import Comment from "./comment";
 
 @Table({
