@@ -6,12 +6,14 @@ import {
     Default, 
     ForeignKey, 
     HasMany, 
+    HasOne, 
     Model, 
     PrimaryKey, 
     Table 
 } from "sequelize-typescript";
 import User from "./User";
 import Comment from "./comment";
+import Follow from "./follow";
 
 @Table({
     underscored: true
@@ -19,7 +21,7 @@ import Comment from "./comment";
 export default class Post extends Model{
 
     @PrimaryKey
-    @Default(DataType.UUIDV4)
+    @Default(DataType.UUID)
     @Column(DataType.UUID)
     id: string
     
@@ -45,5 +47,12 @@ export default class Post extends Model{
 
     @HasMany(() => Comment)
     comments: Comment[]
+
+    @HasOne(() => Follow, {
+        foreignKey: 'followeeId',
+        sourceKey: 'userId'
+    })
+    follow: Follow;
+
 
 }

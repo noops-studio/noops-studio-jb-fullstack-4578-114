@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import User from "../../models/User";
 import Post from "../../models/post";
 import Comment from "../../models/comment";
@@ -24,21 +24,50 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
     }
 }
 
-export async function getPost(req: Request, res: Response, next: NextFunction) {
+export const getProfile: RequestHandler = async (req, res, next) => {
+    try {
+        const userId = '1230ae30-dc4f-4752-bd84-092956f5c633';
+        const profile = await User.findByPk(userId, {
+            include: [{
+                model: Post,
+                include: [
+                    User,
+                    {
+                        model: Comment,
+                        include: [User]
+                    }
+                ]
+            }]
+        });
+        res.json(profile.posts);
+    } catch (e) {
+        next(e);
+    }
+};
+
+export const getPost: RequestHandler = async (req, res, next) => {
     try {
         const postId = req.params.id;
+        console.log('Looking for post with ID:', postId); // Debug log
+        
         const post = await Post.findByPk(postId, {
             include: [
-                User,
+                {
+                    model: User,
+                    attributes: ['id', 'name', 'username']
+                },
                 {
                     model: Comment,
-                    include: [User]
+                    include: [{
+                        model: User,
+                        attributes: ['id', 'name', 'username']
+                    }]
                 }
             ]
         });
         
         if (!post) {
-            return next({
+            return res.status(404).json({
                 status: 404,
                 message: `Post with id ${postId} not found`
             });
@@ -46,9 +75,33 @@ export async function getPost(req: Request, res: Response, next: NextFunction) {
         
         res.json(post);
     } catch (e) {
+        console.error('Error fetching post:', e);
         next(e);
     }
-}
+};
+
+export const deletePost: RequestHandler = async (req, res, next) => {
+    try {
+        const postId = req.params.id;
+        const post = await Post.findByPk(postId);
+        
+        if (!post) {
+            return res.status(404).json({
+                status: 404,
+                message: `Post with id ${postId} not found`
+            });
+        }
+        
+        await post.destroy();
+        res.status(200).json({ 
+            status: 200,
+            message: 'Post deleted successfully' 
+        });
+    } catch (e) {
+        console.error('Error deleting post:', e);
+        next(e);
+    }
+};
 
 export async function createPost(req: Request, res: Response, next: NextFunction) {
     try {
