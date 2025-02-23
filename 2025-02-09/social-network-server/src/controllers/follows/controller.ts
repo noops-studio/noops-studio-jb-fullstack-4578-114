@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import Follow from "../../models/follow";
 import User from "../../models/User";
+import AppError from "../../errors/app-error";
 
 export async function getFollowers(req: Request, res: Response, next: NextFunction) {
     try {
-        const userId = req.query.userId as string;
+        const userId = (req as any).userId;
         if (!userId) {
-            return next({ status: 400, message: "User ID is required" });
+            return next(new AppError(401, "Unauthorized"));
         }
         const user = await User.findByPk(userId, { 
             include: [{ model: User, as: "followers" }] 
@@ -15,7 +16,8 @@ export async function getFollowers(req: Request, res: Response, next: NextFuncti
     } catch (e) {
         next(e);
     }
-}
+  }
+  
 
 export async function getFollowing(req: Request, res: Response, next: NextFunction) {
     try {
