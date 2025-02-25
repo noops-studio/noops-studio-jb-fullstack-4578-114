@@ -1,4 +1,3 @@
-// # components/layout/folowers/FolowersUi.tsx
 interface FollowersProps {
   followers: { id: string; name: string; isFollowing: boolean }[];
   onFollowUnfollow: (userId: string, isFollowing: boolean) => Promise<void>;

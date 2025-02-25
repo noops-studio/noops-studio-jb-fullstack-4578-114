@@ -66,11 +66,6 @@ const FeedPost: React.FC<FeedPostProps> = ({ post, onAddComment }) => {
     }
   };
 
-  // Sort comments by date (oldest first)
-  const sortedComments = [...(post.comments || [])].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-
   return (
     <div className="mb-6 overflow-hidden bg-white rounded-lg shadow-lg">
       {/* Post Header */}
@@ -118,12 +113,12 @@ const FeedPost: React.FC<FeedPostProps> = ({ post, onAddComment }) => {
         </button>
       </div>
 
-      {/* Comments Section */}
+      {/* Comments Modal */}
       {showComments && (
         <div className="border-t border-gray-100 bg-gray-50">
-          {/* Existing Comments */}
+          {/* Comments List */}
           <div className="divide-y divide-gray-100">
-            {sortedComments.map((comment) => (
+            {post.comments?.map((comment) => (
               <div key={comment.id} className="p-4">
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
@@ -131,29 +126,21 @@ const FeedPost: React.FC<FeedPostProps> = ({ post, onAddComment }) => {
                       {comment.user?.name?.[0]?.toUpperCase() || '?'}
                     </div>
                   </div>
-                  <div className="flex-grow">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900">
-                        {comment.user?.name || 'Anonymous'}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {formatDate(comment.createdAt)}
-                      </span>
-                    </div>
+                  <div>
+                    <span className="font-medium text-gray-900">
+                      {comment.user?.name || 'Anonymous'}
+                    </span>
                     <div 
-                      className="mt-1 text-gray-700 text-sm"
+                      className="mt-1 text-gray-700"
                       dangerouslySetInnerHTML={{ __html: comment.body }}
                     />
+                    <span className="text-xs text-gray-500">
+                      {formatDate(comment.createdAt)}
+                    </span>
                   </div>
                 </div>
               </div>
             ))}
-            
-            {sortedComments.length === 0 && (
-              <div className="p-4 text-center text-gray-500">
-                No comments yet. Be the first to comment!
-              </div>
-            )}
           </div>
 
           {/* Add Comment Form */}
@@ -163,30 +150,19 @@ const FeedPost: React.FC<FeedPostProps> = ({ post, onAddComment }) => {
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Write a comment..."
               className="w-full min-h-[100px] p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-              maxLength={1000}
             />
             {error && (
               <div className="mt-2 text-sm text-red-500">
                 {error}
               </div>
             )}
-            <div className="mt-3 flex justify-between items-center">
-              <span className="text-xs text-gray-500">
-                {1000 - newComment.length} characters remaining
-              </span>
+            <div className="mt-3 flex justify-end">
               <button
                 onClick={handleAddComment}
                 disabled={isAddingComment || !newComment.trim()}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                {isAddingComment ? (
-                  <span className="flex items-center space-x-2">
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Posting...</span>
-                  </span>
-                ) : (
-                  'Post Comment'
-                )}
+                {isAddingComment ? "Adding..." : "Add Comment"}
               </button>
             </div>
           </div>

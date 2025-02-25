@@ -2337,7 +2337,11 @@ export const useProfile = () => {
     dispatch(setLoading(true));
     try {
       const posts = await profileService.getProfile();
-      dispatch(setPosts(posts));
+      // Sort posts: Newest (largest date) comes first
+      const sortedPosts = posts.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      dispatch(setPosts(sortedPosts));
     } catch (error: unknown) {
       if (isAppError(error)) {
         dispatch(setError(error.message));
@@ -2361,6 +2365,8 @@ export const useProfile = () => {
       } else {
         dispatch(setError('An unknown error occurred'));
       }
+    } finally {
+      dispatch(setLoading(false));
     }
   };
 

@@ -1,8 +1,8 @@
-// components/posts/feed/Feed.tsx
 import { useEffect, useState } from 'react';
 import { useAppSelector } from '../../../redux/hooks';
 import PostModel from '../../../models/posts/Post';
 import { FeedService } from '../../../services/auth-aware/Feed';
+import { CommentService } from '../../../services/auth-aware/CommentService';
 import useService from '../../../hooks/useService';
 import Loading from '../../common/Loading';
 import { handleError } from '../../utils/errors';
@@ -13,8 +13,8 @@ export default function Feed() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Get the feed service and following list
   const feedService = useService(FeedService);
+  const commentService = useService(CommentService);
   const following = useAppSelector((state) => state.following.following);
 
   const fetchData = async () => {
@@ -22,11 +22,9 @@ export default function Feed() {
     setError(null);
     try {
       const data = await feedService.getFeed();
-      // Filter posts to only show those from users we're following
       const filteredPosts = data.filter(post => 
         following.some(user => user.id === post.userId)
       );
-      // Sort filtered posts by date (newest first)
       const sortedPosts = filteredPosts.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -39,14 +37,12 @@ export default function Feed() {
     }
   };
 
-  // Fetch posts whenever the following list changes
   useEffect(() => {
     fetchData();
   }, [following]);
 
-  const handleAddComment = async (postId: string, comment: string) => {
+  const handleAddComment = async (postId: string, comment: string): Promise<void> => {
     try {
-      const commentService = useService(CommentService);
       const newComment = await commentService.addComment(postId, comment);
       setPosts(currentPosts => 
         currentPosts.map(post => {
@@ -61,7 +57,6 @@ export default function Feed() {
           return post;
         })
       );
-      return newComment;
     } catch (error) {
       console.error('Failed to add comment:', error);
       throw error;

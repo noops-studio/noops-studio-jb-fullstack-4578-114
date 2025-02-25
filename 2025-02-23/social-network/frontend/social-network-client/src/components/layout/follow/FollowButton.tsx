@@ -1,15 +1,16 @@
 import React, { useState } from "react";
-import { Button } from "@mui/material";
-import followerService from "../../../services/auth-aware/FollowersService";
+import { FollowersService } from "../../../services/auth-aware/FollowersService";
+import useService from "../../../hooks/useService";
 
 interface FollowButtonProps {
   userId: string;
-  isFollowing: boolean; // Whether the user is currently following
-  onUpdate: () => void; // Callback to refresh the followers/following list
+  isFollowing: boolean;
+  onUpdate: () => void;
 }
 
 const FollowButton: React.FC<FollowButtonProps> = ({ userId, isFollowing, onUpdate }) => {
   const [loading, setLoading] = useState(false);
+  const followerService = useService(FollowersService);
 
   const handleFollowUnfollow = async () => {
     setLoading(true);
@@ -19,23 +20,26 @@ const FollowButton: React.FC<FollowButtonProps> = ({ userId, isFollowing, onUpda
       } else {
         await followerService.followUser(userId);
       }
-      onUpdate(); // Refresh the followers and following list
+      onUpdate();
     } catch (error) {
-      alert(`Failed to ${isFollowing ? "unfollow" : "follow"} user. Please try again.`);
+      console.error(`Failed to ${isFollowing ? "unfollow" : "follow"} user:`, error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Button
-      variant="contained"
-      color={isFollowing ? "secondary" : "primary"}
+    <button
       onClick={handleFollowUnfollow}
       disabled={loading}
+      className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 ${
+        isFollowing
+          ? "bg-red-500 text-white hover:bg-red-600"
+          : "bg-blue-500 text-white hover:bg-blue-600"
+      } disabled:bg-gray-300`}
     >
       {loading ? "Processing..." : isFollowing ? "Unfollow" : "Follow"}
-    </Button>
+    </button>
   );
 };
 
