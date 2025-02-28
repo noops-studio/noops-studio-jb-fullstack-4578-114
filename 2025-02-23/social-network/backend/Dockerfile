@@ -17,4 +17,4 @@ RUN rm -rf ./src
 
 # the npm start command, will run "node dist/app.js" so the server runs efficiently and not
 # via ts-node
-CMD NODE_ENV=docker npm start
+CMD ["npm", "start"]

@@ -31,7 +31,7 @@ export default function Followers(): JSX.Element {
 
   useEffect(() => {
     fetchData();
-  }, );
+  },[]);
 
   const handleFollowUnfollow = async (userId: string, isCurrentlyFollowing: boolean) => {
     try {

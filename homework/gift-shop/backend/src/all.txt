@@ -1,0 +1,436 @@
+
+# middleware/validation.ts
+import { Request, Response, NextFunction } from 'express';
+
+export function validateGift(req: Request, res: Response, next: NextFunction) {
+  const { targetId, name, description, price, discount } = req.body;
+  
+  if (!targetId || !name || !description || price === undefined || discount === undefined) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  if (price < 0) {
+    return res.status(400).json({ error: 'Price must be non-negative' });
+  }
+
+  if (discount < 0 || discount > 100) {
+    return res.status(400).json({ error: 'Discount must be between 0 and 100' });
+  }
+
+  next();
+}
+
+# middleware/errorHandler.ts
+import { Request, Response, NextFunction } from 'express';
+
+export default function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+}
+    
+# types/gift.types.ts
+export interface Gift {
+    id: number;
+    targetId: number;
+    name: string;
+    description: string;
+    price: number;
+    discount: number;
+  }
+  
+# types/target.types.ts
+export interface Target {
+    id: number;
+    type: string;
+  }
+  
+# config/database.ts
+import { Sequelize } from 'sequelize';
+import config from './config';
+
+const sequelize = new Sequelize(
+  config.db.name as string,
+  config.db.user as string,
+  config.db.password as string,
+  {
+    host: config.db.host,
+    port: Number(config.db.port),
+    dialect: 'mysql',
+    logging: false
+  }
+);
+
+export default sequelize;
+
+# config/config.ts
+import dotenv from 'dotenv';
+dotenv.config();
+
+const config = {
+  port: process.env.PORT,
+  db: {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    name: process.env.DB_NAME,
+    port: process.env.DB_PORT
+  }
+};
+
+export default config;
+
+# app.ts
+import express from 'express';
+import cors from 'cors';
+import routes from './routes';
+import errorHandler from './middleware/errorHandler';
+import Sequelize from './config/database';
+import config from './config/config';
+import logger from './utils/logger';
+
+const app = express();
+
+const PORT = config.port || 5000;
+
+app.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+});
+app.use(cors());
+app.use(express.json());
+
+app.use('/api', routes);
+(async()=>{
+    await Sequelize.sync({force:false});
+
+})()
+
+// Global error handler
+app.use(errorHandler);
+
+export default app;
+
+# seed.ts
+import sequelize from './config/database';
+import { QueryInterface } from 'sequelize';
+import { up as targetsUp } from './seeders/01_targets.seeder';
+import { up as giftsUp } from './seeders/02_gifts.seeder';
+
+(async function runSeeders() {
+  try {
+    // Test the database connection
+    await sequelize.authenticate();
+    console.log('Database connection established successfully.');
+
+    // Get the QueryInterface from Sequelize
+    const queryInterface: QueryInterface = sequelize.getQueryInterface();
+
+    // Run the targets seeder
+    console.log('Running targets seeder...');
+    await targetsUp(queryInterface);
+
+    // Run the gifts seeder
+    console.log('Running gifts seeder...');
+    await giftsUp(queryInterface);
+
+    console.log('Seeders completed successfully.');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error running seeders:', error);
+    process.exit(1);
+  }
+})();
+
+# utils/logger.ts
+class Logger {
+    info(message: string) {
+      console.log(`[INFO] ${message}`);
+    }
+  }
+  
+  export default new Logger();
+  
+# models/Gift.ts
+import { DataTypes, Model, Sequelize } from 'sequelize';
+
+export interface GiftAttributes {
+  id: number;
+  targetId: number;
+  name: string;
+  description: string;
+  price: number;
+  discount: number;
+}
+
+export default class Gift extends Model<GiftAttributes> implements GiftAttributes {
+  public id!: number;
+  public targetId!: number;
+  public name!: string;
+  public description!: string;
+  public price!: number;
+  public discount!: number;
+
+  static initModel(sequelize: Sequelize) {
+    Gift.init(
+      {
+        id: {
+          type: DataTypes.INTEGER,
+          autoIncrement: true,
+          primaryKey: true
+        },
+        targetId: {
+          type: DataTypes.INTEGER,
+          allowNull: false
+        },
+        name: {
+          type: DataTypes.STRING,
+          allowNull: false
+        },
+        description: {
+          type: DataTypes.TEXT,
+          allowNull: false
+        },
+        price: {
+          type: DataTypes.FLOAT,
+          allowNull: false,
+          validate: { min: 0 }
+        },
+        discount: {
+          type: DataTypes.FLOAT,
+          allowNull: false,
+          validate: { min: 0, max: 100 }
+        }
+      },
+      {
+        sequelize,
+        modelName: 'Gift',
+        tableName: 'gifts',
+        timestamps: false
+      }
+    );
+  }
+}
+
+# models/Target.ts
+import { DataTypes, Model, Sequelize } from 'sequelize';
+
+export interface TargetAttributes {
+  id: number;
+  type: string;
+}
+
+export default class Target extends Model<TargetAttributes> implements TargetAttributes {
+  public id!: number;
+  public type!: string;
+
+  static initModel(sequelize: Sequelize) {
+    Target.init(
+      {
+        id: {
+          type: DataTypes.INTEGER,
+          autoIncrement: true,
+          primaryKey: true
+        },
+        type: {
+          type: DataTypes.STRING,
+          allowNull: false
+        }
+      },
+      {
+        sequelize,
+        modelName: 'Target',
+        tableName: 'targets',
+        timestamps: false
+      }
+    );
+  }
+}
+
+# models/index.ts
+import sequelize from '../config/database';
+import Target from './Target';
+import Gift from './Gift';
+
+// Initialize models
+Target.initModel(sequelize);
+Gift.initModel(sequelize);
+
+// Define associations
+Target.hasMany(Gift, { foreignKey: 'targetId', as: 'gifts' });
+Gift.belongsTo(Target, { foreignKey: 'targetId', as: 'target' });
+
+export { sequelize, Target, Gift };
+
+# seeders/02_gifts.seeder.ts
+import { QueryInterface } from 'sequelize';
+
+// Function to insert data into the "gifts" table
+export async function up(queryInterface: QueryInterface) {
+  await queryInterface.bulkInsert('gifts', [
+    { 
+      id: 1, 
+      targetId: 1, 
+      name: 'מתנה מיוחדת', 
+      description: 'תיאור מתנה מיוחדת ללקוחות', 
+      price: 100, 
+      discount: 10 
+    },
+    { 
+      id: 2, 
+      targetId: 2, 
+      name: 'מתנה לספקים', 
+      description: 'תיאור מתנה לספקים איכותיים', 
+      price: 200, 
+      discount: 15 
+    },
+    { 
+      id: 3, 
+      targetId: 3, 
+      name: 'מתנה לעובדים', 
+      description: 'תיאור מתנה לעובדים המצטיינים', 
+      price: 300, 
+      discount: 20 
+    },
+  ]);
+}
+
+// Function to remove the inserted data from the "gifts" table
+export async function down(queryInterface: QueryInterface) {
+  await queryInterface.bulkDelete('gifts', {});
+}
+
+# seeders/01_targets.seeder.ts
+import { QueryInterface } from 'sequelize';
+
+// Function to insert data into the "targets" table
+export async function up(queryInterface: QueryInterface) {
+  await queryInterface.bulkInsert('targets', [
+    { id: 1, type: 'לקוחות' },
+    { id: 2, type: 'ספקים' },
+    { id: 3, type: 'עובדים' },
+  ]);
+}
+
+// Function to remove the inserted data from the "targets" table
+export async function down(queryInterface: QueryInterface) {
+  await queryInterface.bulkDelete('targets', {});
+}
+
+# controllers/giftController.ts
+import { Request, Response, NextFunction } from 'express';
+import GiftService from '../services/giftService';
+
+class GiftController {
+  async getGiftsByTarget(req: Request, res: Response, next: NextFunction) {
+    try {
+      const targetId = Number(req.params.targetId);
+      const gifts = await GiftService.getGiftsByTarget(targetId);
+      res.json(gifts);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async addGift(req: Request, res: Response, next: NextFunction) {
+    try {
+      const newGift = await GiftService.addGift(req.body);
+      res.status(201).json(newGift);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async deleteGift(req: Request, res: Response, next: NextFunction) {
+    try {
+      const giftId = Number(req.params.id);
+      await GiftService.deleteGift(giftId);
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
+export default new GiftController();
+
+# controllers/targetController.ts
+import { Request, Response, NextFunction } from 'express';
+import TargetService from '../services/targetService';
+
+class TargetController {
+  async getAllTargets(req: Request, res: Response, next: NextFunction) {
+    try {
+      const targets = await TargetService.getAllTargets();
+      res.json(targets);
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
+export default new TargetController();
+
+# routes/giftRoutes.ts
+import { Router } from 'express';
+import GiftController from '../controllers/giftController';
+import { validateGift } from '../middleware/validation';
+
+const router = Router();
+
+router.get('/:targetId', GiftController.getGiftsByTarget);
+router.post('/', validateGift, GiftController.addGift);
+router.delete('/:id', GiftController.deleteGift);
+
+export default router;
+
+# routes/targetRoutes.ts
+import { Router } from 'express';
+import TargetController from '../controllers/targetController';
+
+const router = Router();
+
+router.get('/', TargetController.getAllTargets);
+
+export default router;
+
+# routes/index.ts
+import { Router } from 'express';
+import targetRoutes from './targetRoutes';
+import giftRoutes from './giftRoutes';
+
+const router = Router();
+
+router.use('/targets', targetRoutes);
+router.use('/gifts', giftRoutes);
+
+export default router;
+
+# services/giftService.ts
+import { Gift } from '../models';
+
+class GiftService {
+  async getGiftsByTarget(targetId: number) {
+    return await Gift.findAll({ where: { targetId } });
+  }
+
+  async addGift(giftData: any) {
+    return await Gift.create(giftData);
+  }
+
+  async deleteGift(giftId: number) {
+    return await Gift.destroy({ where: { id: giftId } });
+  }
+}
+
+export default new GiftService();
+
+# services/targetService.ts
+import { Target } from '../models';
+
+class TargetService {
+  async getAllTargets() {
+    return await Target.findAll();
+  }
+}
+
+export default new TargetService();
+

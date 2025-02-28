@@ -16,7 +16,7 @@ export default function Following(): JSX.Element {
 
   useEffect(() => {
     fetchFollowing();
-  }, []);
+  },[]);
 
   const handleUnfollow = async (userId: string) => {
     try {
