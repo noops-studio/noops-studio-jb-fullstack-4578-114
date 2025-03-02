@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  gift-shop-database:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+      MYSQL_DATABASE: gift_shop
+      MYSQL_TCP_PORT: "3306"
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  gift-shop-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      gift-shop-database:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: "prod"
+
+  gift-shop-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      gift-shop-database:
+        condition: service_healthy
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:

@@ -3,12 +3,12 @@ import { Gift } from '../models/Gift';
 
 const getGiftsByTarget = async (targetId: number): Promise<Gift[]> => {
   const response = await api.get(`/gifts/${targetId}`);
-  return response.data;
+  return response.data as Gift[];
 };
 
 const addGift = async (gift: Partial<Gift>): Promise<Gift> => {
   const response = await api.post('/gifts', gift);
-  return response.data;
+  return response.data as Gift;
 };
 
 const deleteGift = async (id: number): Promise<void> => {
@@ -16,3 +16,4 @@ const deleteGift = async (id: number): Promise<void> => {
 };
 
 export default { getGiftsByTarget, addGift, deleteGift };
+

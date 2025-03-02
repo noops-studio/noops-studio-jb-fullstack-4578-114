@@ -1,5 +1,56 @@
 
-# middleware/validation.ts
+# package.json
+{
+    "name": "gift-shop-backend",
+    "version": "1.0.0",
+    "description": "Backend for Gift Shop project",
+    "main": "dist/server.js",
+    "scripts": {
+        "start": "tsc && node dist/server.js",
+        "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+        "seed": "ts-node src/seed.ts"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.0.3",
+        "express": "^4.18.2",
+        "mysql2": "^3.12.0",
+        "pg": "^8.9.0",
+        "sequelize": "^6.31.0"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.15",
+        "@types/node": "^18.15.11",
+        "ts-node": "^10.9.1",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^4.9.4"
+    }
+}
+
+# .env
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=
+DB_NAME=gift_shop
+DB_PORT=3306
+PORT=3000
+
+# tsconfig.json
+{
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "commonjs",
+      "outDir": "dist",
+      "rootDir": "./src",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true
+    }
+  }
+  
+# src/middleware/validation.ts
 import { Request, Response, NextFunction } from 'express';
 
 export function validateGift(req: Request, res: Response, next: NextFunction) {
@@ -20,7 +71,7 @@ export function validateGift(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-# middleware/errorHandler.ts
+# src/middleware/errorHandler.ts
 import { Request, Response, NextFunction } from 'express';
 
 export default function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
@@ -28,7 +79,7 @@ export default function errorHandler(err: any, req: Request, res: Response, next
   res.status(500).json({ error: 'Internal server error' });
 }
     
-# types/gift.types.ts
+# src/types/gift.types.ts
 export interface Gift {
     id: number;
     targetId: number;
@@ -38,13 +89,13 @@ export interface Gift {
     discount: number;
   }
   
-# types/target.types.ts
+# src/types/target.types.ts
 export interface Target {
     id: number;
     type: string;
   }
   
-# config/database.ts
+# src/config/database.ts
 import { Sequelize } from 'sequelize';
 import config from './config';
 
@@ -62,7 +113,7 @@ const sequelize = new Sequelize(
 
 export default sequelize;
 
-# config/config.ts
+# src/config/config.ts
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -79,7 +130,7 @@ const config = {
 
 export default config;
 
-# app.ts
+# src/app.ts
 import express from 'express';
 import cors from 'cors';
 import routes from './routes';
@@ -109,7 +160,7 @@ app.use(errorHandler);
 
 export default app;
 
-# seed.ts
+# src/seed.ts
 import sequelize from './config/database';
 import { QueryInterface } from 'sequelize';
 import { up as targetsUp } from './seeders/01_targets.seeder';
@@ -140,7 +191,7 @@ import { up as giftsUp } from './seeders/02_gifts.seeder';
   }
 })();
 
-# utils/logger.ts
+# src/utils/logger.ts
 class Logger {
     info(message: string) {
       console.log(`[INFO] ${message}`);
@@ -149,7 +200,7 @@ class Logger {
   
   export default new Logger();
   
-# models/Gift.ts
+# src/models/Gift.ts
 import { DataTypes, Model, Sequelize } from 'sequelize';
 
 export interface GiftAttributes {
@@ -210,7 +261,7 @@ export default class Gift extends Model<GiftAttributes> implements GiftAttribute
   }
 }
 
-# models/Target.ts
+# src/models/Target.ts
 import { DataTypes, Model, Sequelize } from 'sequelize';
 
 export interface TargetAttributes {
@@ -245,7 +296,7 @@ export default class Target extends Model<TargetAttributes> implements TargetAtt
   }
 }
 
-# models/index.ts
+# src/models/index.ts
 import sequelize from '../config/database';
 import Target from './Target';
 import Gift from './Gift';
@@ -260,7 +311,7 @@ Gift.belongsTo(Target, { foreignKey: 'targetId', as: 'target' });
 
 export { sequelize, Target, Gift };
 
-# seeders/02_gifts.seeder.ts
+# src/seeders/02_gifts.seeder.ts
 import { QueryInterface } from 'sequelize';
 
 // Function to insert data into the "gifts" table
@@ -298,7 +349,7 @@ export async function down(queryInterface: QueryInterface) {
   await queryInterface.bulkDelete('gifts', {});
 }
 
-# seeders/01_targets.seeder.ts
+# src/seeders/01_targets.seeder.ts
 import { QueryInterface } from 'sequelize';
 
 // Function to insert data into the "targets" table
@@ -315,7 +366,7 @@ export async function down(queryInterface: QueryInterface) {
   await queryInterface.bulkDelete('targets', {});
 }
 
-# controllers/giftController.ts
+# src/controllers/giftController.ts
 import { Request, Response, NextFunction } from 'express';
 import GiftService from '../services/giftService';
 
@@ -351,8 +402,7 @@ class GiftController {
 }
 
 export default new GiftController();
-
-# controllers/targetController.ts
+# src/controllers/targetController.ts
 import { Request, Response, NextFunction } from 'express';
 import TargetService from '../services/targetService';
 
@@ -369,7 +419,7 @@ class TargetController {
 
 export default new TargetController();
 
-# routes/giftRoutes.ts
+# src/routes/giftRoutes.ts
 import { Router } from 'express';
 import GiftController from '../controllers/giftController';
 import { validateGift } from '../middleware/validation';
@@ -382,7 +432,7 @@ router.delete('/:id', GiftController.deleteGift);
 
 export default router;
 
-# routes/targetRoutes.ts
+# src/routes/targetRoutes.ts
 import { Router } from 'express';
 import TargetController from '../controllers/targetController';
 
@@ -392,7 +442,7 @@ router.get('/', TargetController.getAllTargets);
 
 export default router;
 
-# routes/index.ts
+# src/routes/index.ts
 import { Router } from 'express';
 import targetRoutes from './targetRoutes';
 import giftRoutes from './giftRoutes';
@@ -404,11 +454,16 @@ router.use('/gifts', giftRoutes);
 
 export default router;
 
-# services/giftService.ts
+# src/services/giftService.ts
 import { Gift } from '../models';
 
 class GiftService {
   async getGiftsByTarget(targetId: number) {
+    // Special case: if targetId is 0, return all gifts
+    if (targetId === 0) {
+      return await Gift.findAll();
+    }
+    // Otherwise, return gifts for the specified target
     return await Gift.findAll({ where: { targetId } });
   }
 
@@ -422,8 +477,7 @@ class GiftService {
 }
 
 export default new GiftService();
-
-# services/targetService.ts
+# src/services/targetService.ts
 import { Target } from '../models';
 
 class TargetService {

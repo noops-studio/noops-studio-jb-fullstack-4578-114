@@ -1,59 +1,51 @@
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo } from 'sequelize-typescript';
+import { Target } from './Target';
 
-export interface GiftAttributes {
-  id: number;
-  targetId: number;
-  name: string;
-  description: string;
-  price: number;
-  discount: number;
-}
+@Table({
+  tableName: 'gifts',
+  timestamps: false
+})
+export class Gift extends Model {
+  @Column({
+    type: DataType.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  })
+  id!: number;
 
-export default class Gift extends Model<GiftAttributes> implements GiftAttributes {
-  public id!: number;
-  public targetId!: number;
-  public name!: string;
-  public description!: string;
-  public price!: number;
-  public discount!: number;
+  @ForeignKey(() => Target)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false
+  })
+  targetId!: number;
 
-  static initModel(sequelize: Sequelize) {
-    Gift.init(
-      {
-        id: {
-          type: DataTypes.INTEGER,
-          autoIncrement: true,
-          primaryKey: true
-        },
-        targetId: {
-          type: DataTypes.INTEGER,
-          allowNull: false
-        },
-        name: {
-          type: DataTypes.STRING,
-          allowNull: false
-        },
-        description: {
-          type: DataTypes.TEXT,
-          allowNull: false
-        },
-        price: {
-          type: DataTypes.FLOAT,
-          allowNull: false,
-          validate: { min: 0 }
-        },
-        discount: {
-          type: DataTypes.FLOAT,
-          allowNull: false,
-          validate: { min: 0, max: 100 }
-        }
-      },
-      {
-        sequelize,
-        modelName: 'Gift',
-        tableName: 'gifts',
-        timestamps: false
-      }
-    );
-  }
+  @Column({
+    type: DataType.STRING,
+    allowNull: false
+  })
+  name!: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: false
+  })
+  description!: string;
+
+  @Column({
+    type: DataType.FLOAT,
+    allowNull: false,
+    validate: { min: 0 }
+  })
+  price!: number;
+
+  @Column({
+    type: DataType.FLOAT,
+    allowNull: false,
+    validate: { min: 0, max: 100 }
+  })
+  discount!: number;
+
+  @BelongsTo(() => Target, 'targetId')
+  target?: Target;
 }

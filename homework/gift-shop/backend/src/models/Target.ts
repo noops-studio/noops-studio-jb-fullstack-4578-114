@@ -1,33 +1,24 @@
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
+import { Gift } from './Gift';
 
-export interface TargetAttributes {
-  id: number;
-  type: string;
-}
+@Table({
+  tableName: 'targets',
+  timestamps: false
+})
+export class Target extends Model {
+  @Column({
+    type: DataType.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  })
+  id!: number;
 
-export default class Target extends Model<TargetAttributes> implements TargetAttributes {
-  public id!: number;
-  public type!: string;
+  @Column({
+    type: DataType.STRING,
+    allowNull: false
+  })
+  type!: string;
 
-  static initModel(sequelize: Sequelize) {
-    Target.init(
-      {
-        id: {
-          type: DataTypes.INTEGER,
-          autoIncrement: true,
-          primaryKey: true
-        },
-        type: {
-          type: DataTypes.STRING,
-          allowNull: false
-        }
-      },
-      {
-        sequelize,
-        modelName: 'Target',
-        tableName: 'targets',
-        timestamps: false
-      }
-    );
-  }
+  @HasMany(() => Gift, 'targetId')
+  gifts?: Gift[];
 }
