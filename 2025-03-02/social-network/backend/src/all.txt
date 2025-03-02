@@ -1,0 +1,776 @@
+
+# routers/comments.ts
+import { Router } from "express";
+import { createComment } from "../controllers/comments/controller";
+import validation from "../middlewares/validation";
+import { newCommentValidator } from "../controllers/comments/validator";
+
+const commentsRouter = Router();
+
+commentsRouter.post("/", validation(newCommentValidator), createComment);
+
+export default commentsRouter;
+# routers/feed.ts
+import { Router } from "express";
+import { getUserFeed } from "../controllers/feed/controller";
+
+const feedRouter = Router();
+
+feedRouter.get("/", getUserFeed);
+
+export default feedRouter;
+# routers/follows.ts
+import { Router } from "express";
+import { followUser, getFollowers, getFollowing, unfollowUser } from "../controllers/follows/controller";
+
+const followsRouter = Router();
+
+followsRouter.get("/followers", getFollowers);
+followsRouter.get("/following", getFollowing);
+followsRouter.post("/follow/:id", followUser);
+followsRouter.post("/unfollow/:id", unfollowUser);
+
+export default followsRouter;
+
+# routers/profile.ts
+import { Router } from 'express';
+import { createPost, editPost, getPost, getProfile, deletePost } from '../controllers/profile/controller';
+import validation from '../middlewares/validation';
+import { newPostValidator } from '../controllers/profile/validators';
+
+const profileRouter = Router();
+
+profileRouter.get('/', getProfile);
+profileRouter.get('/:id', getPost);
+profileRouter.delete('/:id', deletePost);
+profileRouter.post('/', validation(newPostValidator), createPost);
+profileRouter.patch('/editPost/:id', validation(newPostValidator), editPost);
+
+export default profileRouter;
+# routers/index.ts
+// routers/index.ts
+import { Router } from "express";
+import profileRouter from "./profile";
+import commentsRouter from "./comments";
+import followsRouter from "./follows";
+import feedRouter from "./feed";
+import authRouter from "./auth";
+import { jwtExtractor } from "../middlewares/auth/jwt-auth";
+
+const router = Router();
+
+router.use((req, res, next) => {
+  if (req.path.startsWith("/auth")) {
+    return next();
+  }
+  return jwtExtractor(req, res, next);
+});
+
+router.use("/profile", profileRouter);
+router.use("/follows", followsRouter);
+router.use("/comments", commentsRouter);
+router.use("/feed", feedRouter);
+router.use("/auth", authRouter);
+
+export default router;
+
+# routers/auth.ts
+import { Router } from "express";
+import { login, signup } from "../controllers/auth/controller";
+import { loginValidator, signupValidator } from "../controllers/auth/validator";
+import validation from "../middlewares/validation";
+
+const authRouter = Router();
+authRouter.post('/login', validation(loginValidator), login);
+authRouter.post('/signup', validation(signupValidator), signup);
+
+export default authRouter;
+# app.ts
+import express from "express";
+import config from 'config';
+import sequelize from "./db/sequelize";
+import errorLogger from "./middlewares/error/error-logger";
+import errorResponder from "./middlewares/error/error-responder";
+import notFound from "./middlewares/not-found";
+import router from "./routers/index";
+import cors from 'cors';
+const port = config.get<string>('app.port');
+const name = config.get<string>('app.name');
+const force = config.get<boolean>('sequelize.sync.force');
+
+const app = express(); 
+app.use(cors())
+// Middlewares
+// app.use(cors({
+//     origin: '*',
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//     allowedHeaders: ['Content-Type', 'Authorization'],
+//     credentials: true
+// }));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+(async () => {
+    await sequelize.sync({ force });
+
+    // Use the main router
+    app.use('/api', router);
+
+    // Error handling
+    app.use(notFound);
+    app.use(errorLogger);
+    app.use(errorResponder);
+
+    app.listen(port, () => console.log(`${name} started on port ${port}...`));
+})();
+# middlewares/validation.ts
+import { NextFunction, Request, Response } from "express";
+import { ObjectSchema } from "joi";
+
+ export default function validation(validator:ObjectSchema) {
+return  async function (req: Request, res: Response, next: NextFunction)  {
+        try {
+            await validator.validateAsync(req.body);
+            next();
+        } catch (error) {
+            next({
+                status: 422,
+                message: error.message
+            })
+            
+        }
+}
+}
+# middlewares/not-found.ts
+import { NextFunction, Request, Response } from "express";
+
+export default function notFound(req: Request, res: Response, next: NextFunction) {
+    next({
+        status: 404,
+        message: 'not found'        
+    })
+}
+# middlewares/auth/require-auth.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "../../errors/app-error";
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!(req as any).userId) {
+    return next(new AppError(401, "Unauthorized"));
+  }
+  next();
+}
+
+# middlewares/auth/jwt-auth.ts
+import { NextFunction, Request, Response } from "express";
+import { verify } from "jsonwebtoken";
+import config from "config";
+import AppError from "../../errors/app-error";
+
+export function jwtExtractor(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) {
+    console.log("Authorization header missing");  // Debugging
+    return next(new AppError(401, "Authorization header missing"));
+  }
+
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+
+  try {
+    const decoded = verify(token, config.get("app.jwtSecret"));
+    (req as any).userId = (decoded as any).id;
+    console.log("Extracted userId:", (req as any).userId);  // Debugging
+    next();
+  } catch (err) {
+    console.log("Invalid token:", err.message);  // Debugging
+    return next(new AppError(401, "Invalid token"));
+  }
+}
+
+
+# middlewares/error/error-responder.ts
+import { NextFunction, Request, Response } from "express";
+
+export default function errorResponder(err: Error, req: Request, res: Response, next: NextFunction) {
+    res.status(500).send(err.message)
+}
+# middlewares/error/error-logger.ts
+import { NextFunction, Request, Response } from "express";
+
+export default function errorLogger(err: Error, req: Request, res: Response, next: NextFunction) {
+    console.error(err.message)
+    next(err)
+}
+# models/follow.ts
+import { 
+    AllowNull, 
+    Column, 
+    DataType, 
+    Default, 
+    ForeignKey, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import User from "./User";
+
+@Table({
+    underscored: true
+})
+export default class Follow extends Model{
+
+    @PrimaryKey
+    @ForeignKey(() => User)
+    @Column(DataType.UUID)
+    followerId: string
+
+    @PrimaryKey
+    @ForeignKey(() => User)
+    @Column(DataType.UUID)
+    followeeId: string
+}
+
+# models/comment.ts
+import { 
+    AllowNull, 
+    BelongsTo, 
+    Column, 
+    DataType, 
+    Default, 
+    ForeignKey, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import Post from "./post";
+import User from "./User";
+
+@Table({
+    underscored: true,
+})
+export default class Comment extends Model{
+
+    @PrimaryKey
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    id: string
+    
+    @ForeignKey(() => Post)
+    @AllowNull(false)
+    @Column(DataType.UUID)
+    postId: string
+
+    @ForeignKey(() => User)
+    @AllowNull(false)
+    @Column(DataType.UUID)
+    userId: string
+
+    @AllowNull(false)
+    @Column(DataType.TEXT)
+    body: string
+
+    @BelongsTo(() => Post)
+    post: Post
+
+    @BelongsTo(() => User)
+    user: User
+
+}
+
+# models/User.ts
+import { 
+    AllowNull, 
+    BelongsToMany, 
+    Column, 
+    DataType, 
+    Default, 
+    HasMany, 
+    Index, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import Post from "./post";
+import Comment from "./comment";
+import Follow from "./follow";
+
+@Table({
+    underscored: true,
+})
+export default class User extends Model{
+
+    @PrimaryKey
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    id: string
+    
+    @AllowNull(false)
+    @Column(DataType.STRING(40))
+    name: string
+    
+    @Index({ unique: true })
+    @AllowNull(false)
+    @Column(DataType.STRING(40))
+    username: string
+    
+    @AllowNull(false)
+    @Column(DataType.STRING(64))
+    password: string
+
+    @HasMany(() => Post, {
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+    })
+    posts: Post[]
+
+    @HasMany(() => Comment)
+    comments: Comment[]
+
+    @BelongsToMany(() => User, () => Follow, 'followeeId', 'followerId')
+    followers: User[]
+
+    @BelongsToMany(() => User, () => Follow, 'followerId', 'followeeId')
+    following: User[]
+
+}
+
+# models/post.ts
+import { 
+    AllowNull, 
+    BelongsTo, 
+    Column, 
+    DataType, 
+    Default, 
+    ForeignKey, 
+    HasMany, 
+    HasOne, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import User from "./User";
+import Comment from "./comment";
+import Follow from "./follow";
+
+@Table({
+    underscored: true
+})
+export default class Post extends Model{
+
+    @PrimaryKey
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    id: string
+    
+    @ForeignKey(() => User)
+    @AllowNull(false)
+    @Column(DataType.UUID)
+    userId: string
+    
+    @AllowNull(false)
+    @Column(DataType.STRING(40))
+    title: string
+    
+    @AllowNull(false)
+    @Column(DataType.TEXT)
+    body: string
+
+    @AllowNull(true)
+    @Column(DataType.STRING(255))
+    imageUrl: string
+
+    @BelongsTo(() => User)
+    user: User
+
+    @HasMany(() => Comment)
+    comments: Comment[]
+
+    @HasOne(() => Follow, {
+        foreignKey: 'followeeId',
+        sourceKey: 'userId'
+    })
+    follow: Follow;
+
+
+}
+
+# db/sequelize.ts
+import { Sequelize } from "sequelize-typescript";
+import User from "../models/User";
+import config from 'config'
+import Post from "../models/post";
+import Comment from "../models/comment";
+import Follow from "../models/follow";
+
+const logging = config.get<boolean>('sequelize.logging') ? console.log : false
+
+const sequelize = new Sequelize({
+    models: [ User, Post, Comment, Follow ],
+    dialect: 'mysql',
+    ...config.get('db'),
+    logging,
+})
+
+export default sequelize
+# errors/error-responder.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "./app-error";
+
+export default function errorResponder(err:Error , req : Request , res : Response, next : NextFunction){
+    if (err instanceof AppError){
+        return res.status(err.status).send(err.message)
+    }else{
+        res.status(500).send(err.message)
+    }
+}
+# errors/app-error.ts
+import { ReasonPhrases } from "http-status-codes";
+
+export default class AppError extends Error {
+  constructor(public status: number, message?: string) {
+    super(message || ReasonPhrases[status]);
+  }
+}
+
+# controllers/comments/controller.ts
+import Comment from "../../models/comment";
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/User";
+import { v4 } from "uuid";
+
+export async function createComment(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+        const { postId, body } = req.body;
+        const comment = await Comment.create({
+            id: v4(),
+            postId,
+            userId,
+            body,
+        });
+        await comment.reload({ include: [User] });
+        res.json(comment);
+    } catch (e) {
+        next(e);
+    }
+  }
+  
+# controllers/comments/validator.ts
+import Joi from "joi";
+
+export const newCommentValidator = Joi.object({
+    body: Joi.string().min(20).required()
+});
+
+export const editCommentValidator = newCommentValidator;
+
+# controllers/auth/controller.ts
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/User";
+import { createHmac } from "crypto";
+import config from "config";
+import { sign } from "jsonwebtoken";
+import { v4 } from "uuid";
+import { error } from "console";
+import AppError from "../../errors/app-error";
+
+function hash(password: string): string {
+  const hash = createHmac("sha256", config.get("app.secret"))
+    .update(password)
+    .digest("hex");
+  return hash;
+}
+
+function jwt(user: User): string {
+  const token = sign(user, config.get("app.jwtSecret"));
+  return token;
+}
+
+// export async function signup(req: Request, res: Response, next: NextFunction) {
+//     req.body.password = hash(req.body.password)
+//     req.body.id = v4()
+//     const user = await User.create(req.body)
+//     const token = jwt(user.get({plain: true}));
+//     res.json({jwt: token})
+// }
+
+export async function signup(req: Request, res: Response, next: NextFunction) {
+  try {
+    req.body.password = hash(req.body.password);
+    req.body.id = v4();
+    const user = await User.create(req.body);
+    const token = jwt(user.get({ plain: true }));
+    res.json({ jwt: token });
+  } catch (e) {
+    if(e.name === 'SequelizeUniqueConstraintError'){
+        return next(new AppError(
+            409,`unable to create user`
+        ))
+    }
+  }
+}
+
+export async function login(req: Request, res: Response, next: NextFunction) {
+  const { username, password } = req.body;
+  const user = await User.findOne({
+    where: {
+      username,
+      password: hash(password),
+    },
+  });
+  const token = jwt(user.get({ plain: true }));
+  console.log(user.get({ plain: true }));
+  res.json({ jwt: token });
+}
+
+# controllers/auth/validator.ts
+import Joi from "joi";
+
+export const loginValidator = Joi.object({
+    username: Joi.string().min(6).required(),
+    password: Joi.string().min(6).required(),
+})
+
+export const signupValidator = loginValidator.append({
+    name: Joi.string().min(6).required()
+})
+# controllers/profile/validators.ts
+import Joi from "joi";
+
+export const newPostValidator = Joi.object({
+    title: Joi.string().min(10).required(),
+    body: Joi.string().min(20).allow('').required(),  // Allow empty strings
+});
+
+
+export const editPostValidator = newPostValidator;
+
+# controllers/profile/controller.ts
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/User";
+import Post from "../../models/post";
+import Comment from "../../models/comment";
+
+export async function getProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+        const profile = await User.findByPk(userId, {
+            include: [{
+                model: Post,
+                include: [
+                    User,
+                    {
+                        model: Comment,
+                        include: [User]
+                    }
+                ]
+            }]
+        });
+        res.json(profile?.posts || []);
+    } catch (e) {
+        next(e);
+    }
+  }
+  
+export async function getPost(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+    try {
+        const post = await Post.findByPk(req.params.id, {
+            include: [ User, {
+                model: Comment,
+                include: [ User ]
+            } ]
+        });
+        res.json(post);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deletePost(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+    try {
+        // const post = await Post.findByPk(req.params.id);
+        // await post.destroy();
+        const id = req.params.id;
+        const deletedRaws = await Post.destroy({
+             where: { id } 
+            });
+            if(deletedRaws === 0) return next({
+                status: 404,
+                message: `Post with id ${id} not found`
+            })
+            res.json({
+                success: true
+            })
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function createPost(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+
+        const { title, body } = req.body;
+        console.log("data:", {
+            title,
+            body,
+            userId,
+            imageUrl: 'http://mypic.com'
+        });        
+        const post = await Post.create({
+            title,
+            body,
+            userId,
+            imageUrl: 'http://mypic.com'
+        });
+
+        await post.reload({
+            include: [
+                User,
+                {
+                    model: Comment,
+                    include: [User]
+                }
+            ]
+        });
+        
+        res.json(post);
+    } catch (e) {
+        next(e);
+    }
+}
+
+export async function editPost(req: Request, res: Response, next: NextFunction) {
+    try {
+        const postId = req.params.id;
+        const { title, body } = req.body;
+        
+        const post = await Post.findByPk(postId);
+        
+        if (!post) {
+            return next({
+                status: 404,
+                message: `Post with id ${postId} not found`
+            });
+        }
+        
+        post.title = title;
+        post.body = body;
+        await post.save();
+        
+        res.json(post);
+    } catch (e) {
+        next(e);
+    }
+}
+# controllers/feed/controller.ts
+import { NextFunction, Request, Response } from "express";
+import Post from "../../models/post";
+import Follow from "../../models/follow";
+import User from "../../models/User";
+import Comment from "../../models/comment";
+
+export async function getUserFeed(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+
+        const feedPosts = await Post.findAll({
+            include: [
+                {
+                    model: Follow,
+                    where: {
+                        followerId: userId
+                    },
+                    required: true
+                },
+                {
+                    model: Comment,
+                    include: [{
+                        model: User
+                    }]
+                },
+                {
+                    model: User
+                }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.json(feedPosts);
+    } catch (e) {
+        console.error('Error in getUserFeed:', e);
+        next(e);
+    }
+}
+# controllers/follows/controller.ts
+import { NextFunction, Request, Response } from "express";
+import Follow from "../../models/follow";
+import User from "../../models/User";
+import AppError from "../../errors/app-error";
+
+export async function getFollowers(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+        if (!userId) {
+            return next(new AppError(401, "Unauthorized"));
+        }
+        const user = await User.findByPk(userId, { 
+            include: [{ model: User, as: "followers" }] 
+        });
+        res.json(user?.followers || []);
+    } catch (e) {
+        next(e);
+    }
+  }
+  
+
+export async function getFollowing(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+        if (!userId) {
+            return next({ status: 400, message: "User ID is required" });
+        }
+        const user = await User.findByPk(userId, { 
+            include: [{ model: User, as: "following" }] 
+        });
+        res.json(user?.following || []);
+    } catch (e) {
+        next(e);
+    }
+}
+
+export async function followUser(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+        const followeeId = req.params.id;
+        if (!userId || !followeeId) {
+            return next({ status: 400, message: "Both userId and followeeId are required" });
+        }
+        const follow = await Follow.create({ 
+            followerId: userId, 
+            followeeId 
+        });
+        res.json(follow);
+    } catch (e) {
+        next(e);
+    }
+}
+
+export async function unfollowUser(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = (req as any).userId;
+        const followeeId = req.params.id;
+        if (!userId || !followeeId) {
+            return next({ status: 400, message: "Both userId and followeeId are required" });
+        }
+        await Follow.destroy({ 
+            where: { 
+                followerId: userId, 
+                followeeId 
+            } 
+        });
+        res.json({ success: true });
+    } catch (e) {
+        next(e);
+    }
+}

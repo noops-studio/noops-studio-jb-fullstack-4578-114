@@ -13,7 +13,7 @@
         "database": "twitter"
     },
     "sequelize": {
-        "logging": true,
+        "logging": false,
         "sync": {
             "force": false
         }
