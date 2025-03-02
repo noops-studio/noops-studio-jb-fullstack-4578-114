@@ -1,0 +1,478 @@
+
+# routers/product.router.ts
+import { Router } from 'express';
+import productController from '../controllers/product.controller';
+import { validate } from '../middlewares/validation.middleware';
+import Joi from 'joi';
+
+const router = Router();
+
+// Validation schema for creating a product
+const createProductSchema = Joi.object({
+  name: Joi.string().required().trim().min(2).max(100),
+  manufacturingDate: Joi.date().iso().required(),
+  expirationDate: Joi.date().iso().required(),
+  categoryId: Joi.string().uuid().required(),
+  price: Joi.number().precision(2).positive().required()
+});
+
+// Get products by category
+router.get('/category/:categoryId', productController.getProductsByCategory);
+
+// Create a new product
+router.post('/', validate(createProductSchema), productController.createProduct);
+
+// Delete a product
+router.delete('/:id', productController.deleteProduct);
+
+export default router;
+# routers/category.router.ts
+import { Router } from 'express';
+import categoryController from '../controllers/category.controller';
+
+const router = Router();
+
+// Get all categories
+router.get('/', categoryController.getAllCategories);
+
+// Get category by ID
+router.get('/:id', categoryController.getCategoryById);
+
+export default router;
+# app.ts
+import express from 'express';
+import sequelize from './db/sequelize';
+import categoryRouter from './routers/category.router';
+import productRouter from './routers/product.router';
+import { errorHandler } from './middlewares/error.middleware';
+import { seedData } from './seeders/seed';
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+
+// CORS middleware
+app.use(cors());
+
+// Routes
+app.use('/api/categories', categoryRouter);
+app.use('/api/products', productRouter);
+
+// Error handler
+app.use(errorHandler);
+
+// Start server
+const startServer = async () => {
+  try {
+    // Sync database models
+    await sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
+    console.log('Database connected and synchronized');
+    
+    // Seed initial data from dedicated seeder
+    await seedData();
+    
+    // Start Express server
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+export default app;
+
+
+
+# middlewares/validation.middleware.ts
+import { Request, Response, NextFunction } from 'express';
+import Joi from 'joi';
+import { BadRequestError } from '../errors/error-handler';
+
+export const validate = (schema: Joi.ObjectSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const { error } = schema.validate(req.body);
+    if (error) {
+      const errorMessage = error.details.map(detail => detail.message).join(', ');
+      return next(new BadRequestError(errorMessage));
+    }
+    next();
+  };
+};
+# middlewares/error.middleware.ts
+import { Request, Response, NextFunction } from 'express';
+import { AppError } from '../errors/error-handler';
+
+export const errorHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  console.error('Error:', err);
+
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+
+  return res.status(500).json({
+    status: 'error',
+    message: 'Internal server error'
+  });
+};
+# models/product.model.ts
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo } from 'sequelize-typescript';
+import { v4 as uuidv4 } from 'uuid';
+import { Category } from './category.model';
+
+@Table({
+  tableName: 'products',
+  timestamps: true
+})
+export class Product extends Model {
+  @Column({
+    type: DataType.UUID,
+    primaryKey: true,
+    defaultValue: () => uuidv4()
+  })
+  id!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false
+  })
+  name!: string;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false
+  })
+  manufacturingDate!: Date;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: false
+  })
+  expirationDate!: Date;
+
+  @ForeignKey(() => Category)
+  @Column({
+    type: DataType.UUID,
+    allowNull: false
+  })
+  categoryId!: string;
+
+  @Column({
+    type: DataType.DECIMAL(10, 2),
+    allowNull: false
+  })
+  price!: number;
+
+  @BelongsTo(() => Category)
+  category?: Category;
+}
+# models/category.model.ts
+import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
+import { v4 as uuidv4 } from 'uuid';
+import { Product } from './product.model';
+
+@Table({
+  tableName: 'categories',
+  timestamps: true
+})
+export class Category extends Model {
+  @Column({
+    type: DataType.UUID,
+    primaryKey: true,
+    defaultValue: () => uuidv4()
+  })
+  id!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: false
+  })
+  name!: string;
+
+  @HasMany(() => Product)
+  products?: Product[];
+}
+# seeders/seed.ts
+import { Category } from '../models/category.model';
+import { Product } from '../models/product.model';
+
+export const seedData = async () => {
+  try {
+    // Create categories
+    const categories = [
+      { name: 'Dairy Products' },
+      { name: 'Bakery' },
+      { name: 'Vegetables' },
+      { name: 'Sweets' },
+      { name: 'Beverages' }
+    ];
+    
+    for (const category of categories) {
+      await Category.findOrCreate({
+        where: { name: category.name },
+        defaults: category
+      });
+    }
+    
+    console.log('Categories seeded successfully');
+    
+    // Get all categories
+    const allCategories = await Category.findAll();
+    
+    // Create sample products if none exist
+    const productCount = await Product.count();
+    
+    if (productCount === 0 && allCategories.length > 0) {
+      const now = new Date();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      const products = [
+        {
+          name: 'Milk 3%',
+          manufacturingDate: now,
+          expirationDate: nextWeek,
+          categoryId: allCategories[0].id,
+          price: 5.90
+        },
+        {
+          name: 'Fresh Bread',
+          manufacturingDate: now,
+          expirationDate: tomorrow,
+          categoryId: allCategories[1].id,
+          price: 8.50
+        },
+        {
+          name: 'Cucumber',
+          manufacturingDate: now,
+          expirationDate: nextWeek,
+          categoryId: allCategories[2].id,
+          price: 3.20
+        },
+        {
+          name: 'Chocolate Bar',
+          manufacturingDate: now,
+          expirationDate: nextMonth,
+          categoryId: allCategories[3].id,
+          price: 4.50
+        },
+        {
+          name: 'Mineral Water',
+          manufacturingDate: now,
+          expirationDate: nextMonth,
+          categoryId: allCategories[4].id,
+          price: 6.90
+        }
+      ];
+      
+      await Product.bulkCreate(products);
+      console.log('Sample products seeded successfully');
+    }
+  } catch (error) {
+    console.error('Error seeding data:', error);
+  }
+};
+# db/sequelize.ts
+import { Sequelize } from 'sequelize-typescript';
+import { config } from '../../config/config';
+import { Category } from '../models/category.model';
+import { Product } from '../models/product.model';
+
+const env = process.env.NODE_ENV || 'development';
+const dbConfig = config[env as keyof typeof config];
+
+const sequelize = new Sequelize({
+  database: dbConfig.database,
+  username: dbConfig.username,
+  password: dbConfig.password,
+  host: dbConfig.host,
+  port: dbConfig.port,
+  dialect: 'mysql',
+  models: [Category, Product],
+  logging: true
+});
+
+export default sequelize;
+# errors/error-handler.ts
+export class AppError extends Error {
+    statusCode: number;
+    isOperational: boolean;
+  
+    constructor(message: string, statusCode: number) {
+      super(message);
+      this.statusCode = statusCode;
+      this.isOperational = true;
+  
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+  
+  export class BadRequestError extends AppError {
+    constructor(message: string) {
+      super(message, 400);
+    }
+  }
+  
+  export class NotFoundError extends AppError {
+    constructor(message: string) {
+      super(message, 404);
+    }
+  }
+  
+  export class UnauthorizedError extends AppError {
+    constructor(message: string) {
+      super(message, 401);
+    }
+  }
+# controllers/category.controller.ts
+import { Request, Response, NextFunction } from 'express';
+import { Category } from '../models/category.model';
+import { NotFoundError } from '../errors/error-handler';
+
+export class CategoryController {
+  async getAllCategories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const categories = await Category.findAll({
+        attributes: ['id', 'name']
+      });
+      
+      return res.status(200).json({
+        status: 'success',
+        data: categories
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCategoryById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const category = await Category.findByPk(id);
+      
+      if (!category) {
+        throw new NotFoundError(`Category with ID ${id} not found`);
+      }
+      
+      return res.status(200).json({
+        status: 'success',
+        data: category
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export default new CategoryController();
+# controllers/product.controller.ts
+import { Request, Response, NextFunction } from 'express';
+import { Product } from '../models/product.model';
+import { Category } from '../models/category.model';
+import { NotFoundError, BadRequestError } from '../errors/error-handler';
+
+export class ProductController {
+  async getProductsByCategory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { categoryId } = req.params;
+      
+      // Check if the category exists
+      const category = await Category.findByPk(categoryId);
+      if (!category) {
+        throw new NotFoundError(`Category with ID ${categoryId} not found`);
+      }
+      
+      const products = await Product.findAll({
+        where: { categoryId },
+        include: [{
+          model: Category,
+          attributes: ['id', 'name']
+        }]
+      });
+      
+      return res.status(200).json({
+        status: 'success',
+        data: products
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createProduct(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { name, manufacturingDate, expirationDate, categoryId, price } = req.body;
+      
+      // Check if the category exists
+      const category = await Category.findByPk(categoryId);
+      if (!category) {
+        throw new NotFoundError(`Category with ID ${categoryId} not found`);
+      }
+      
+      // Validate dates
+      const mfgDate = new Date(manufacturingDate);
+      const expDate = new Date(expirationDate);
+      
+      if (expDate <= mfgDate) {
+        throw new BadRequestError('Expiration date must be after manufacturing date');
+      }
+      
+      const product = await Product.create({
+        name,
+        manufacturingDate: mfgDate,
+        expirationDate: expDate,
+        categoryId,
+        price
+      });
+      
+      return res.status(201).json({
+        status: 'success',
+        data: product
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteProduct(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const product = await Product.findByPk(id);
+      
+      if (!product) {
+        throw new NotFoundError(`Product with ID ${id} not found`);
+      }
+      
+      await product.destroy();
+      
+      return res.status(200).json({
+        status: 'success',
+        message: 'Product deleted successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export default new ProductController();
