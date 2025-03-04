@@ -61,20 +61,24 @@ export async function deletePost(req: Request<{ id: string }>, res: Response, ne
 export async function createPost(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = (req as any).userId;
-
+        
         const { title, body } = req.body;
         console.log("data:", {
+            body: req.body,
+            userId
+        });     
+        
+        let createParams: { title: any; body: any; userId: any; imageUrl?: string } = {
             title,
             body,
-            userId,
-            imageUrl: 'http://mypic.com'
-        });        
-        const post = await Post.create({
-            title,
-            body,
-            userId,
-            imageUrl: 'http://mypic.com'
-        });
+            userId
+        };
+        
+        if (req.imageUrl) {
+            createParams = { ...createParams, imageUrl: req.imageUrl };
+        }
+        
+        const post = await Post.create(createParams);
 
         await post.reload({
             include: [

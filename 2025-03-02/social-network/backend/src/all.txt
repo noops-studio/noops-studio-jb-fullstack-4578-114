@@ -36,14 +36,15 @@ export default followsRouter;
 import { Router } from 'express';
 import { createPost, editPost, getPost, getProfile, deletePost } from '../controllers/profile/controller';
 import validation from '../middlewares/validation';
-import { newPostValidator } from '../controllers/profile/validators';
+import { newPostFileValidator, newPostValidator } from '../controllers/profile/validators';
+import fileUploader from '../middlewares/file-uploader';
 
 const profileRouter = Router();
 
 profileRouter.get('/', getProfile);
 profileRouter.get('/:id', getPost);
 profileRouter.delete('/:id', deletePost);
-profileRouter.post('/', validation(newPostValidator), createPost);
+profileRouter.post('/', validation(newPostValidator),validation(newPostFileValidator),fileUploader, createPost);
 profileRouter.patch('/editPost/:id', validation(newPostValidator), editPost);
 
 export default profileRouter;
@@ -94,6 +95,7 @@ import errorResponder from "./middlewares/error/error-responder";
 import notFound from "./middlewares/not-found";
 import router from "./routers/index";
 import cors from 'cors';
+import fileUpload from "express-fileupload";
 const port = config.get<string>('app.port');
 const name = config.get<string>('app.name');
 const force = config.get<boolean>('sequelize.sync.force');
@@ -109,10 +111,16 @@ app.use(cors())
 // }));
 
 app.use(express.json());
+app.use(fileUpload());
 app.use(express.urlencoded({ extended: true }));
+
 (async () => {
     await sequelize.sync({ force });
 
+    app.use((req, res, next) => {
+        console.log(`Method: ${req.method}  Request URL: ${req.originalUrl}`);
+        next(); // Move to the next middleware
+    });
     // Use the main router
     app.use('/api', router);
 
@@ -131,6 +139,24 @@ import { ObjectSchema } from "joi";
 return  async function (req: Request, res: Response, next: NextFunction)  {
         try {
             await validator.validateAsync(req.body);
+            next();
+        } catch (error) {
+            next({
+                status: 422,
+                message: error.message
+            })
+            
+        }
+}
+}
+# middlewares/files-validation.ts
+import { NextFunction, Request, Response } from "express";
+import { ObjectSchema } from "joi";
+
+ export default function fileValidator(validator:ObjectSchema) {
+return  async function (req: Request, res: Response, next: NextFunction)  {
+        try {
+            await validator.validateAsync(req.files);
             next();
         } catch (error) {
             next({
@@ -188,6 +214,60 @@ export function jwtExtractor(req: Request, res: Response, next: NextFunction) {
 }
 
 
+# middlewares/file-uploader.ts
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
+import { NextFunction, Request, Response } from "express";
+import { UploadedFile } from "express-fileupload";
+declare global {
+    namespace Express {
+        interface Request {
+            imageUrl?: string;
+        }}}
+export default async function fileUploader(req: Request, res: Response, next: NextFunction) {
+    if (!req.files) {
+        return next();
+    }
+
+    const s3Client = new S3Client({
+        region: 'us-east-1',
+        forcePathStyle: true,
+        credentials: {
+            accessKeyId: 'test',
+            secretAccessKey: 'test'
+        },
+        endpoint: 'http://localhost:4566'
+    });
+    const postImage = req.files.postImage as UploadedFile;
+
+    // const createBucket = await s3Client.send(new CreateBucketCommand({ Bucket: 'test' }));
+
+
+    try {
+        await s3Client.send(new CreateBucketCommand({ Bucket: 'test' }));
+    } catch (error) {
+        console.log('Bucket already exists');
+        
+    }
+
+
+    const upload = new Upload({
+        client: s3Client,
+        params: {
+            Bucket: 'test',
+            Key: postImage.name,
+            Body: postImage.data
+        }
+    });
+
+    const result = await upload.done();
+    const file = req.files.postImage;
+    const url = 'http://localhost:3000/';
+
+    // req.imageUrl = url + file.name;
+    req.imageUrl = url;
+    next();
+}
 # middlewares/error/error-responder.ts
 import { NextFunction, Request, Response } from "express";
 
@@ -542,6 +622,12 @@ export const newPostValidator = Joi.object({
     body: Joi.string().min(20).allow('').required(),  // Allow empty strings
 });
 
+export const newPostFileValidator = Joi.object({
+    postImage: Joi.object({
+        mimetype: Joi.string().valid('image/png', 'image/jpg', 'image/jpeg')
+    }).unknown(true) 
+})
+
 
 export const editPostValidator = newPostValidator;
 
@@ -609,20 +695,24 @@ export async function deletePost(req: Request<{ id: string }>, res: Response, ne
 export async function createPost(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = (req as any).userId;
-
+        
         const { title, body } = req.body;
         console.log("data:", {
+            body: req.body,
+            userId
+        });     
+        
+        let createParams: { title: any; body: any; userId: any; imageUrl?: string } = {
             title,
             body,
-            userId,
-            imageUrl: 'http://mypic.com'
-        });        
-        const post = await Post.create({
-            title,
-            body,
-            userId,
-            imageUrl: 'http://mypic.com'
-        });
+            userId
+        };
+        
+        if (req.imageUrl) {
+            createParams = { ...createParams, imageUrl: req.imageUrl };
+        }
+        
+        const post = await Post.create(createParams);
 
         await post.reload({
             include: [
