@@ -1,0 +1,3134 @@
+
+# main.tsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './assets/output.css'
+import App from './components/app/App.tsx'
+// import * as Sentry from "@sentry/react";
+
+
+
+// Sentry.init({
+//   dsn: "https://106544dd7f0888e8cf6de5f307cd654f@o4508091701592065.ingest.us.sentry.io/4508629353234432",
+//   integrations: [
+//     Sentry.browserTracingIntegration(),
+//   ],
+//   // Tracing
+//   tracesSampleRate: 1.0, //  Capture 100% of the transactions
+//   // Set 'tracePropagationTargets' to control for which URLs distributed tracing should be enabled
+//   tracePropagationTargets: ["localhost", /^https:\/\/jb\.noop\.co\.il/],
+// });
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+# index.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Base Scrollbar Styles */
+* {
+    @apply scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200;
+  }
+  
+  /* Thumb Hover Effect */
+  *:hover {
+    @apply scrollbar-thumb-gray-500;
+  }
+ 
+# models/posts/PostDraft.ts
+export default interface PostDraft {
+    title: string;
+    body: string;
+}
+# models/posts/Post.ts
+import Comment from "../comment/Comments";
+import User from "../users/Users";
+import PostDraft from "./PostDraft";
+export default interface Post extends PostDraft {
+    id: string;
+    userId: string;
+
+    imageUrl: string;
+    createdAt: string;
+    updatedAt: string;
+    comments: Comment[];
+    user: User;
+}
+# models/comment/Comments.ts
+import User from "../users/Users";
+import CommentDraft from "./CommentDraft";
+export default interface Comment extends CommentDraft {
+    id: string;
+    userId: string;
+    createdAt: string;
+    updatedAt: string;
+    user: User;
+}
+
+# models/comment/CommentDraft.ts
+export default interface CommentDraft {
+    postId: string;
+    body: string;
+}
+# models/users/Login.ts
+export default interface Login {
+    username: string;
+    password: string;
+}
+# models/users/Users.ts
+import Login from "./Login";
+
+export default interface User extends Login {
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+}
+# models/users/Signup.ts
+import Login from "./Login";
+
+export default interface Signup extends Login {
+    name:string;
+}
+# models/userFollower/UserFollower.ts
+ export default interface userFollower {
+    id:string;
+    name:string
+    username:string;
+    password:string;
+    created_at:string;
+    updated_at:string;
+
+ }
+# models/login/User.ts
+
+# input.css
+
+# components/posts/post/Post.tsx
+// components/posts/post/Post.tsx
+import { useState } from "react";
+import useService from "../../../hooks/useService";
+import PostModel from "../../../models/posts/Post";
+import { useAppDispatch } from "../../../redux/hooks";
+import ProfileService from "../../../services/auth-aware/Profile";
+import PostsUi from "./PostUi";
+
+interface PostProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<void>;
+}
+
+export default function Post({ post, onDelete }: PostProps): JSX.Element {
+  const dispatch = useAppDispatch();
+  const profileService = useService(ProfileService);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState(post.title);
+  const [newBody, setNewBody] = useState(post.body);
+
+  const profilePictureUrl = "https://cdn.ozari.co.il/beery/noop.jpeg";
+
+  const handleDelete = async () => {
+    try {
+      await onDelete(post.id);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to delete post:", error);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (newTitle.trim() && newBody.trim()) {
+      try {
+        const updatedPost = await profileService.updatePost(post.id, {
+          title: newTitle,
+          body: newBody,
+        });
+        dispatch({ type: "profile/updatePost", payload: updatedPost });
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Failed to update post:", error);
+      }
+    }
+  };
+
+  return (
+    <PostsUi
+      post={post}
+      profilePictureUrl={profilePictureUrl}
+      isEditing={isEditing}
+      isDeleteDialogOpen={isDeleteDialogOpen}
+      setIsEditing={setIsEditing}
+      setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+      newTitle={newTitle}
+      newBody={newBody}
+      setNewTitle={setNewTitle}
+      setNewBody={setNewBody}
+      onDelete={handleDelete}
+      onUpdate={handleUpdate}
+    />
+  );
+}
+# components/posts/post/PostUi.tsx
+// components/posts/post/PostUi.tsx
+import { useState } from "react";
+import { useComments } from '../../../hooks/useComments';
+import PostModel from "../../../models/posts/Post";
+import TinyEditor from '../../common/TinyEditor';
+
+interface PostsUiProps {
+  post: PostModel;
+  profilePictureUrl: string;
+  isEditing: boolean;
+  isDeleteDialogOpen: boolean;
+  setIsEditing: (value: boolean) => void;
+  setIsDeleteDialogOpen: (value: boolean) => void;
+  newTitle: string;
+  newBody: string;
+  setNewTitle: (value: string) => void;
+  setNewBody: (value: string) => void;
+  onDelete: () => Promise<void>;
+  onUpdate: () => Promise<void>;
+}
+
+const MIN_COMMENT_LENGTH = 20;
+
+export default function PostsUi({
+  post,
+  profilePictureUrl,
+  isEditing,
+  isDeleteDialogOpen,
+  setIsEditing,
+  setIsDeleteDialogOpen,
+  newTitle,
+  newBody,
+  setNewTitle,
+  setNewBody,
+  onDelete,
+  onUpdate,
+}: PostsUiProps): JSX.Element {
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { addComment } = useComments();
+
+  const validateComment = (comment: string) => {
+    const stripHtml = (html: string) => {
+      const tmp = document.createElement("DIV");
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || "";
+    };
+
+    const strippedComment = stripHtml(comment);
+    return strippedComment.length >= MIN_COMMENT_LENGTH;
+  };
+
+  const handleAddComment = async () => {
+    if (!validateComment(newComment)) {
+      setCommentError(`Comment must be at least ${MIN_COMMENT_LENGTH} characters long`);
+      return;
+    }
+
+    setCommentError(null);
+    setIsAddingComment(true);
+
+    try {
+      await addComment(post.id, newComment);
+      setNewComment("");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      setCommentError("Failed to add comment. Please try again.");
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      await onUpdate();
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update post:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 7) {
+      return date.toLocaleDateString();
+    } else if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
+  return (
+    <div className="border rounded-lg shadow-lg bg-white p-6 mb-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <img
+            src={profilePictureUrl}
+            alt="Profile"
+            className="w-10 h-10 rounded-full mr-4"
+          />
+          <div>
+            <h2 className="text-lg font-semibold">{post.user?.name || "Anonymous"}</h2>
+            <p className="text-sm text-gray-500">{formatTimeAgo(post.createdAt)}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setShowComments(!showComments)}
+            className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+            title="Comments"
+          >
+            💬 {post.comments?.length || 0}
+          </button>
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className={`p-2 rounded-full ${
+              isEditing ? "bg-gray-400 hover:bg-gray-500" : "bg-green-500 hover:bg-green-600"
+            } text-white`}
+            title={isEditing ? "Cancel Edit" : "Edit"}
+          >
+            {isEditing ? "✕" : "✏️"}
+          </button>
+          <button
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
+            title="Delete"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      {/* Content Section */}
+      {!isEditing ? (
+        <div className="mt-4">
+          <h3 className="text-xl font-bold mb-2">{post.title}</h3>
+          <div
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: post.body }}
+          />
+        </div>
+      ) : (
+        <div className="mt-4">
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="w-full p-2 border rounded-md mb-4"
+            placeholder="Enter title"
+            minLength={10}
+          />
+          <TinyEditor
+            value={newBody}
+            onChange={setNewBody}
+            placeholder="Enter content..."
+          />
+          <div className="mt-4 flex justify-end space-x-4">
+            <button
+              onClick={() => setIsEditing(false)}
+              className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+              disabled={isUpdating}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpdate}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:bg-blue-300"
+              disabled={isUpdating}
+            >
+              {isUpdating ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Comments Modal */}
+      {showComments && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white w-11/12 md:max-w-2xl p-6 rounded-lg shadow-lg overflow-y-auto max-h-screen">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Comments ({post.comments?.length || 0})</h3>
+              <button
+                onClick={() => setShowComments(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {post.comments?.map((comment) => (
+                <div key={comment.id} className="border-b pb-4">
+                  <div className="flex items-center mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm mr-2">
+                      {comment.user?.name?.[0] || 'A'}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{comment.user?.name || "Anonymous"}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatTimeAgo(comment.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className="text-gray-700 pl-10"
+                    dangerouslySetInnerHTML={{ __html: comment.body }}
+                  />
+                </div>
+              ))}
+              {post.comments?.length === 0 && (
+                <p className="text-gray-500 text-center">No comments yet</p>
+              )}
+            </div>
+
+            <div className="border-t pt-4">
+              <div className="mb-4">
+                <TinyEditor
+                  value={newComment}
+                  onChange={setNewComment}
+                  placeholder="Add a comment..."
+                  height={150}
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Minimum {MIN_COMMENT_LENGTH} characters required
+                </p>
+                {commentError && (
+                  <p className="mt-1 text-sm text-red-500">{commentError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => {
+                    setNewComment("");
+                    setCommentError(null);
+                    setShowComments(false);
+                  }}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddComment}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:bg-blue-300"
+                  disabled={isAddingComment || !newComment.trim()}
+                >
+                  {isAddingComment ? "Adding Comment..." : "Add Comment"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Delete Post</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setIsDeleteDialogOpen(false)}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onDelete}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
+              >
+                Delete Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+# components/posts/post/Post.css
+.posts-inner-container {
+    transition: opacity 2.5s ease-in-out;
+    opacity: 1;
+  }
+  
+  .posts-inner-container.fade-out {
+    opacity: 0;
+    pointer-events: none; /* Optional: Prevent interactions during fade-out */
+  }
+  
+# components/posts/post/PostsUi.css
+.post-card {
+    margin: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .post-header {
+    display: flex;
+    align-items: center;
+  }
+  
+  .profile-pic {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .post-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .post-body {
+    margin-top: 16px;
+  }
+  
+  .comment-item {
+    margin-bottom: 12px;
+  }
+  
+  .submit-comment {
+    margin-top: 16px;
+  }
+  
+# components/posts/profile/Profile.tsx
+// components/posts/profile/Profile.tsx
+import { useEffect } from 'react';
+import { useProfile } from '../../../hooks/useProfile';
+import useTitle from '../../../hooks/useTitle';
+import { useAppSelector } from '../../../redux/hooks';
+import Loading from '../../common/Loading';
+import NewPost from '../new/NewPost';
+import Post from '../post/Post';
+import './Profile.css';
+
+export default function Profile() {
+  useTitle('Profile');
+  const { posts, loading, error } = useAppSelector((state) => state.profile);
+  const { fetchPosts, createPost, deletePost } = useProfile();
+
+  useEffect(() => {
+    fetchPosts();
+  },[]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePost(id);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+    }
+  };
+
+  if (loading) {
+    return <Loading isLoading={true} />;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error: {error}</div>;
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-gray-100 p-4">
+      <NewPost onAddPost={createPost} />
+      <div className="posts-container flex-grow mt-6">
+        {Array.isArray(posts) && posts.length > 0 ? (
+          posts.map((post) => (
+            <Post 
+              key={post.id} 
+              post={post}
+              onDelete={handleDelete}
+            />
+          ))
+        ) : (
+          <div className="text-center text-gray-500 mt-4">
+            No posts found. Create your first post above!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+# components/posts/profile/Profile.css
+.posts-container {
+    flex-grow: 1; /* Fill available space */
+    height: 100%; /* Allow the container to take up the full height */
+    overflow-y: auto;
+    padding: 16px;
+  }
+  
+  
+  .posts-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .posts-container::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 3px;
+  }
+  
+# components/posts/feed/FeedPost.tsx
+import React, { useState } from 'react';
+
+interface FeedPostProps {
+  post: {
+    id: string;
+    title: string;
+    body: string;
+    createdAt: string;
+    user: {
+      id: string;
+      name: string;
+    };
+    comments: Array<{
+      id: string;
+      body: string;
+      createdAt: string;
+      user: {
+        id: string;
+        name: string;
+      };
+    }>;
+  };
+  onAddComment: (postId: string, comment: string) => Promise<void>;
+}
+
+const FeedPost: React.FC<FeedPostProps> = ({ post, onAddComment }) => {
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isAddingComment, setIsAddingComment] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 7) {
+      return date.toLocaleDateString();
+    } else if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    
+    setIsAddingComment(true);
+    setError(null);
+    try {
+      await onAddComment(post.id, newComment);
+      setNewComment('');
+    } catch (err) {
+      setError('Failed to add comment. Please try again.');
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
+  return (
+    <div className="mb-6 overflow-hidden bg-white rounded-lg shadow-lg">
+      {/* Post Header */}
+      <div className="flex items-start space-x-4 p-4 border-b border-gray-100">
+        <div className="flex-shrink-0">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-lg">
+            {post.user?.name?.[0]?.toUpperCase() || '?'}
+          </div>
+        </div>
+        
+        <div className="flex-grow">
+          <div className="flex items-baseline justify-between">
+            <h3 className="font-semibold text-gray-900">
+              {post.user?.name || 'Anonymous'}
+            </h3>
+            <span className="text-sm text-gray-500">
+              {formatDate(post.createdAt)}
+            </span>
+          </div>
+          
+          <h4 className="text-lg font-medium text-gray-900 mt-2">
+            {post.title}
+          </h4>
+        </div>
+      </div>
+
+      {/* Post Content */}
+      <div className="p-4">
+        <div 
+          className="prose max-w-none"
+          dangerouslySetInnerHTML={{ __html: post.body }}
+        />
+      </div>
+
+      {/* Post Actions */}
+      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+        <button
+          onClick={() => setShowComments(!showComments)}
+          className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <span className="text-xl">💬</span>
+          <span className="text-sm font-medium">
+            {post.comments?.length || 0} Comments
+          </span>
+        </button>
+      </div>
+
+      {/* Comments Modal */}
+      {showComments && (
+        <div className="border-t border-gray-100 bg-gray-50">
+          {/* Comments List */}
+          <div className="divide-y divide-gray-100">
+            {post.comments?.map((comment) => (
+              <div key={comment.id} className="p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                      {comment.user?.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-900">
+                      {comment.user?.name || 'Anonymous'}
+                    </span>
+                    <div 
+                      className="mt-1 text-gray-700"
+                      dangerouslySetInnerHTML={{ __html: comment.body }}
+                    />
+                    <span className="text-xs text-gray-500">
+                      {formatDate(comment.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Comment Form */}
+          <div className="p-4 bg-white border-t border-gray-100">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write a comment..."
+              className="w-full min-h-[100px] p-3 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+            />
+            {error && (
+              <div className="mt-2 text-sm text-red-500">
+                {error}
+              </div>
+            )}
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={handleAddComment}
+                disabled={isAddingComment || !newComment.trim()}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {isAddingComment ? "Adding..." : "Add Comment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FeedPost;
+# components/posts/feed/Feed.tsx
+import { useEffect, useState } from 'react';
+import { useAppSelector } from '../../../redux/hooks';
+import PostModel from '../../../models/posts/Post';
+import { FeedService } from '../../../services/auth-aware/Feed';
+import { CommentService } from '../../../services/auth-aware/CommentService';
+import useService from '../../../hooks/useService';
+import Loading from '../../common/Loading';
+import { handleError } from '../../utils/errors';
+import FeedPost from './FeedPost';
+
+export default function Feed() {
+  const [posts, setPosts] = useState<PostModel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const feedService = useService(FeedService);
+  const commentService = useService(CommentService);
+  const following = useAppSelector((state) => state.following.following);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await feedService.getFeed();
+      const filteredPosts = data.filter(post => 
+        following.some(user => user.id === post.userId)
+      );
+      const sortedPosts = filteredPosts.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setPosts(sortedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', handleError(error));
+      setError('Failed to load feed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [following]);
+
+  const handleAddComment = async (postId: string, comment: string): Promise<void> => {
+    try {
+      const newComment = await commentService.addComment(postId, comment);
+      setPosts(currentPosts => 
+        currentPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [...(post.comments || []), newComment].sort(
+                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              )
+            };
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      throw error;
+    }
+  };
+
+  if (loading) {
+    return <Loading isLoading={true} />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <div className="text-red-500 mb-4">{error}</div>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6 text-gray-900">Your Feed</h1>
+      <div className="space-y-6">
+        {posts.length > 0 ? (
+          posts.map(post => (
+            <FeedPost
+              key={post.id}
+              post={post}
+              onAddComment={handleAddComment}
+            />
+          ))
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            No posts to show. Follow some users to see their posts here!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+# components/posts/feed/Feed.css
+
+# components/posts/new/NewForm.css
+
+# components/posts/new/NewPost.tsx
+// components/posts/new/NewPost.tsx
+import { useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
+import PostDraft from "../../../models/posts/PostDraft";
+import Loading from "../../common/Loading";
+import TinyEditor from "../../common/TinyEditor";
+
+interface NewPostProps {
+  onAddPost: (newPost: PostDraft) => void;
+}
+
+const MIN_TITLE_LENGTH = 10;
+const MIN_BODY_LENGTH = 20;
+
+export default function NewPost({ onAddPost }: NewPostProps) {
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<PostDraft>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [bodyContent, setBodyContent] = useState("");
+  const [bodyError, setBodyError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const handleEditorChange = (content: string) => {
+    setBodyContent(content);
+    setValue("body", content);
+    // Clear body error when user starts typing
+    setBodyError(null);
+  };
+
+  const validateBody = (content: string) => {
+    // Strip HTML tags for length validation
+    const stripHtml = (html: string) => {
+      const tmp = document.createElement("DIV");
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || "";
+    };
+
+    const strippedBody = stripHtml(content).trim();
+    
+    if (!strippedBody) {
+      return "Body content is required";
+    }
+    
+    if (strippedBody.length < MIN_BODY_LENGTH) {
+      return `Body must be at least ${MIN_BODY_LENGTH} characters long (currently: ${strippedBody.length})`;
+    }
+
+    return null;
+  };
+
+  const onSubmit: SubmitHandler<PostDraft> = async (data) => {
+    const bodyValidationError = validateBody(bodyContent);
+    
+    if (bodyValidationError) {
+      setBodyError(bodyValidationError);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setBodyError(null);
+
+    try {
+      await onAddPost({ ...data, body: bodyContent });
+      reset();
+      setBodyContent("");
+      setShowForm(false);
+    } catch (error: any) {
+      setError(error.message || "Failed to add post.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md mb-6">
+      <button
+        onClick={() => setShowForm(!showForm)}
+        className="w-full p-4 text-left flex justify-between items-center hover:bg-gray-50"
+      >
+        <span className="text-lg font-semibold">
+          {showForm ? "Close New Post" : "Create New Post"}
+        </span>
+        <span className="text-2xl">{showForm ? "−" : "+"}</span>
+      </button>
+
+      {showForm && (
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6 border-t">
+          <Loading isLoading={loading} error={error} />
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Title *
+            </label>
+            <input
+              type="text"
+              className={`w-full p-2 border rounded-md ${
+                errors.title ? "border-red-500" : "border-gray-300"
+              }`}
+              {...register("title", { 
+                required: "Title is required",
+                minLength: {
+                  value: MIN_TITLE_LENGTH,
+                  message: `Title must be at least ${MIN_TITLE_LENGTH} characters`
+                }
+              })}
+              placeholder={`Enter a title (minimum ${MIN_TITLE_LENGTH} characters)`}
+            />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Body *
+            </label>
+            <TinyEditor
+              value={bodyContent}
+              onChange={handleEditorChange}
+              placeholder={`Write your post content (minimum ${MIN_BODY_LENGTH} characters)...`}
+            />
+            {bodyError && (
+              <p className="mt-1 text-sm text-red-500">{bodyError}</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                reset();
+                setBodyContent("");
+                setBodyError(null);
+                setError(null);
+                setShowForm(false);
+              }}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+            >
+              {loading ? "Creating..." : "Create Post"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+# components/app/App.tsx
+// components/app/App.tsx
+import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
+import Routing from "../layout/routing/Routing";
+import store from "../../redux/store";
+import "./App.css";
+import Auth from "../auth/Auth";
+
+export default function App(): JSX.Element {
+  return (
+    <div className="App">
+      <BrowserRouter>
+        <Provider store={store}>
+          <Auth>
+          <Routing />
+          </Auth>
+        </Provider>
+      </BrowserRouter>
+    </div>
+  );
+}
+
+# components/app/App.css
+.App {
+    height: 100%;
+}
+# components/auth/Auth.tsx
+import { createContext, PropsWithChildren, useState } from "react";
+
+interface AuthContextInterface {
+    jwt: string;
+    newLogin: (jwt: string) => void; // Change from React.Dispatch
+    logout: () => void;
+}
+
+export const AuthContext = createContext<AuthContextInterface | null>(null);
+
+export default function Auth(props: PropsWithChildren): JSX.Element {
+    const JWT_KEY = 'jwt';
+    const [jwt, setJwt] = useState<string>(localStorage.getItem(JWT_KEY) || '');
+
+    function newLogin(jwt: string) {
+        localStorage.setItem(JWT_KEY, jwt);
+        setJwt(jwt);
+    }
+
+    function logout() {
+        localStorage.removeItem(JWT_KEY);
+        setJwt('');
+    }
+
+    const { children } = props;
+
+    return (
+        <AuthContext.Provider value={{ jwt, newLogin, logout }}>
+            {children}
+        </AuthContext.Provider>
+    )
+}
+# components/layout/footer/Footer.tsx
+import './Footer.css'
+
+export default function Footer() {
+    return (
+      <div className="bg-gray-800 text-white text-center py-4">
+        <p>Server is {import.meta.env.VITE_REST_SERVER_URL}</p>
+      </div>
+    );
+  }
+  
+# components/layout/footer/Footer.css
+
+# components/layout/not-found/NotFound.css
+
+# components/layout/not-found/NotFound.tsx
+import './NotFound.css'
+
+export default function NotFound(): JSX.Element {
+    return (
+        <div className='NotFound'>
+            <h1>404</h1>
+            <p>Page not found</p>
+            <p>Noop is an afghan hound</p>
+        </div>
+    )
+}
+# components/layout/layout/Layout.tsx
+// components/layout/layout/Layout.tsx
+import { useContext } from "react";
+import { Outlet } from "react-router-dom";
+import { AuthContext } from "../../auth/Auth";
+import Followings from "../following/Following";
+import Folowers from "../folowers/Folowers";
+import Footer from "../footer/Footer";
+import Header from "../header/Header";
+import LoginPage from "../login/login";
+
+// Utility function to check if the user is authenticated
+
+
+export default function Layout() {
+  // Redirect to /login if the user is not authenticated
+  // if (!isAuthenticated()) {
+  //   return <Navigate to="/login" replace />;
+  // }
+
+  const {jwt} = useContext(AuthContext)!;
+const isAuthenticated: boolean = !!jwt;
+
+
+  return (
+    <div>
+      {!isAuthenticated && (
+        <>
+          <LoginPage />
+        </>
+      )}
+
+      {isAuthenticated && (
+        <>
+          <div className="grid grid-rows-[auto_1fr_auto] grid-cols-[1fr_3fr] h-screen">
+            <header className="col-span-2 row-start-1 bg-gray-100 border border-gray-300">
+              <Header />
+            </header>
+
+            <aside className="col-start-1 row-start-2 bg-white border border-gray-300 p-4 h-full grid grid-rows-2 gap-4">
+              <div className="overflow-y-auto">
+                <Followings />
+              </div>
+              <div className="overflow-y-auto">
+                <Folowers />
+              </div>
+            </aside>
+
+            <main className="col-start-2 row-start-2 row-span-2 bg-gray-50 border border-gray-300 p-4">
+              <div className="h-full overflow-y-auto">
+                <Outlet />
+              </div>
+            </main>
+
+            <footer className="col-span-2 row-start-4 bg-gray-800 h-5 text-white text-center py-4">
+              <Footer />
+            </footer>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+# components/layout/layout/Layout.css
+.Layout {
+    display: grid;
+    grid-template-rows: auto 1fr auto; /* Ensure flexible row height */
+    grid-template-columns: 1fr 3fr;
+    height: 100vh; /* Ensure the layout spans the full viewport */
+  }
+
+.Layout > header {
+    grid-column: 1 / span 2;
+    grid-row: 1;
+}
+
+.Layout > footer {
+    grid-column: 1 / span 2;
+    grid-row: 4;
+}
+
+.Layout > aside:nth-child(1) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.Layout > aside:nth-child(2) {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+
+  
+  .Layout > main {
+    height: 100%; /* Inherit full height from the parent */
+    overflow-y: auto; /* Allow scrolling for the content */
+  }
+  
+  
+
+.Layout > * {
+    border: 1px dashed lightcoral;
+}
+
+# components/layout/follow/FollowButton.tsx
+import React, { useState } from "react";
+import { FollowersService } from "../../../services/auth-aware/FollowersService";
+import useService from "../../../hooks/useService";
+
+interface FollowButtonProps {
+  userId: string;
+  isFollowing: boolean;
+  onUpdate: () => void;
+}
+
+const FollowButton: React.FC<FollowButtonProps> = ({ userId, isFollowing, onUpdate }) => {
+  const [loading, setLoading] = useState(false);
+  const followerService = useService(FollowersService);
+
+  const handleFollowUnfollow = async () => {
+    setLoading(true);
+    try {
+      if (isFollowing) {
+        await followerService.unfollowUser(userId);
+      } else {
+        await followerService.followUser(userId);
+      }
+      onUpdate();
+    } catch (error) {
+      console.error(`Failed to ${isFollowing ? "unfollow" : "follow"} user:`, error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleFollowUnfollow}
+      disabled={loading}
+      className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 ${
+        isFollowing
+          ? "bg-red-500 text-white hover:bg-red-600"
+          : "bg-blue-500 text-white hover:bg-blue-600"
+      } disabled:bg-gray-300`}
+    >
+      {loading ? "Processing..." : isFollowing ? "Unfollow" : "Follow"}
+    </button>
+  );
+};
+
+export default FollowButton;
+# components/layout/logout/logout.tsx
+import Cookies from 'js-cookie';
+import { useContext, useEffect } from 'react';
+import { AuthContext } from '../../auth/Auth';
+
+const LogoutPage = () => {
+    const auth = useContext(AuthContext);
+
+    useEffect(() => {
+        // Call the logout function from context
+        if (auth) {
+            auth.logout();
+        }
+
+        // Delete the 'auth' cookie
+        Cookies.remove('auth');
+
+        // Redirect to the home page after a delay
+        const timer = setTimeout(() => {
+            window.location.href = '/';
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }, [auth]);
+
+    return (
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-100 text-center">
+            <div className="p-6 bg-white rounded-2xl shadow-lg">
+                <h1 className="text-2xl font-bold mb-4">Thank You!</h1>
+                <p className="text-gray-700 mb-4">
+                    Thanks for using our social media software. We hope to see you again soon!
+                </p>
+                <button
+                    className="px-4 py-2 mt-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onClick={() => {
+                        window.location.href = '/';
+                    }}
+                >
+                    Go to Homepage
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default LogoutPage;
+# components/layout/editPost/EditPost.tsx
+import PostModel from "../../../models/posts/Post";
+import EditPostUi from "./EditPostUi";
+
+interface EditPostProps {
+  post: PostModel;
+  onDelete: (id: string) => Promise<boolean>;
+  onSavePost: (updatedPost: { title: string; body: string; postId: string }) => Promise<void>;
+}
+
+export default function EditPost({ post, onDelete, onSavePost }: EditPostProps) {
+  const { id, title, body, createdAt } = post;
+
+  const handleSavePost = async (updatedPost: { title: string; body: string; postId: string }) => {
+    await onSavePost(updatedPost);
+  };
+
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this post?")) {
+      await onDelete(id);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-white shadow-md rounded-lg mb-6">
+      {/* Post Header */}
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          <p className="text-sm text-gray-500">
+            Created at {new Date(createdAt).toLocaleString()}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          {/* Edit Post Button */}
+          <EditPostUi title={title} body={body} postId={id} onSave={handleSavePost} />
+
+          {/* Delete Button */}
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            onClick={handleDelete}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Post Body */}
+      <div className="prose">
+        <div dangerouslySetInnerHTML={{ __html: body }} />
+      </div>
+    </div>
+  );
+}
+
+# components/layout/editPost/EditPostUi.tsx
+import { useState } from 'react';
+import TinyEditor from '../../common/TinyEditor';
+
+interface EditPostUiProps {
+  title: string;
+  body: string;
+  postId: string;
+  onSave: (updatedPost: { title: string; body: string; postId: string }) => Promise<void>;
+}
+
+export default function EditPostUi({ title, body, postId, onSave }: EditPostUiProps) {
+  const [postTitle, setPostTitle] = useState(title);
+  const [postBody, setPostBody] = useState(body);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = () => setIsModalOpen(false);
+
+  const handleConfirmUpdate = async () => {
+    setIsModalOpen(false);
+    await onSave({ title: postTitle, body: postBody, postId });
+  };
+
+  return (
+    <div className="text-center">
+      <button
+        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        onClick={handleOpenModal}
+      >
+        Edit Post
+      </button>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-3xl p-6">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Edit Post</h2>
+
+            <div className="mb-6">
+              <label
+                htmlFor="post-title"
+                className="block text-gray-700 text-sm font-medium mb-1"
+              >
+                Title
+              </label>
+              <input
+                id="post-title"
+                type="text"
+                value={postTitle}
+                onChange={(e) => setPostTitle(e.target.value)}
+                placeholder="Enter a title for your post"
+                className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2 text-base focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition duration-200 placeholder-gray-400 hover:shadow-md"
+              />
+            </div>
+
+            <div className="mb-6">
+              <label
+                htmlFor="post-body"
+                className="block text-gray-700 text-sm font-medium mb-1"
+              >
+                Body
+              </label>
+              <TinyEditor value={postBody} onChange={setPostBody} />
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                onClick={handleCloseModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handleConfirmUpdate}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+# components/layout/folowers/Folowers.tsx
+import { useEffect } from "react";
+import "./Folowers.css";
+import FollowersUi from "./FolowersUi";
+import { useAppSelector } from "../../../redux/hooks";
+import { useFollowers } from "../../../hooks/useFollowers";
+import { useFollowing } from "../../../hooks/useFollowing";
+
+export default function Followers(): JSX.Element {
+  const followers = useAppSelector((state) => state.followers.followers);
+  const following = useAppSelector((state) => state.following.following);
+  const { fetchFollowers, follow, unfollow } = useFollowers();
+  const { fetchFollowing } = useFollowing();
+
+  // Add isFollowing property to followers
+  const mappedFollowers = followers.map(follower => ({
+    ...follower,
+    isFollowing: following.some(f => f.id === follower.id)
+  }));
+
+  // Function to fetch all necessary data
+  const fetchData = async () => {
+    try {
+      await Promise.all([
+        fetchFollowers(),
+        fetchFollowing()
+      ]);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  },[]);
+
+  const handleFollowUnfollow = async (userId: string, isCurrentlyFollowing: boolean) => {
+    try {
+      if (isCurrentlyFollowing) {
+        await unfollow(userId);
+      } else {
+        await follow(userId);
+      }
+      // Refresh the data after follow/unfollow
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to follow/unfollow user:", error);
+    }
+  };
+
+  return (
+    <div className="h-full">
+      <h1 className="text-lg font-semibold mb-4">Followers List</h1>
+      <FollowersUi 
+        followers={mappedFollowers}
+        onFollowUnfollow={handleFollowUnfollow}
+      />
+    </div>
+  );
+}
+# components/layout/folowers/Folowers.css
+
+# components/layout/folowers/FolowersUi.tsx
+interface FollowersProps {
+  followers: { id: string; name: string; isFollowing: boolean }[];
+  onFollowUnfollow: (userId: string, isFollowing: boolean) => Promise<void>;
+}
+
+const FollowersUi: React.FC<FollowersProps> = ({ followers, onFollowUnfollow }) => {
+  return (
+    <div className="flex flex-col p-4 bg-gray-50 rounded-md shadow-md max-h-80 overflow-y-auto">
+      {followers.map(({ id, name, isFollowing }) => (
+        <div
+          key={id}
+          className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-lg">
+              {name ? name[0].toUpperCase() : "?"}
+            </div>
+            <span className="text-gray-800 font-medium text-sm">{name || "Unknown"}</span>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                await onFollowUnfollow(id, isFollowing);
+              } catch (error) {
+                console.error("Error following/unfollowing user:", error);
+              }
+            }}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 focus:outline-none shadow-md ${
+              isFollowing
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-blue-500 text-white hover:bg-blue-600"
+            }`}
+          >
+            {isFollowing ? "Unfollow" : "Follow"}
+          </button>
+        </div>
+      ))}
+      {followers.length === 0 && (
+        <p className="text-gray-500 text-center">No followers yet.</p>
+      )}
+    </div>
+  );
+};
+
+export default FollowersUi;
+# components/layout/following/Following.tsx
+// components/layout/following/Following.tsx
+import { useEffect } from "react";
+import "./Following.css";
+import FollowingUi from "./FollowingUi";
+import { useAppSelector } from "../../../redux/hooks";
+import { useFollowing } from "../../../hooks/useFollowing";
+import { useFollowers } from "../../../hooks/useFollowers";
+
+export default function Following(): JSX.Element {
+  const following = useAppSelector((state) => state.following.following).map(user => ({
+    ...user,
+    isFollowing: true // or any logic to determine if the user is being followed
+  }));
+  const { fetchFollowing } = useFollowing();
+  const { unfollow } = useFollowers();
+
+  useEffect(() => {
+    fetchFollowing();
+  },[]);
+
+  const handleUnfollow = async (userId: string) => {
+    try {
+      await unfollow(userId);
+      // The state will be automatically updated through Redux
+    } catch (error) {
+      console.error("Failed to unfollow user:", error);
+    }
+  };
+
+  return (
+    <div className="h-full">
+      <h1 className="text-lg font-semibold mb-4">Following List</h1>
+      <FollowingUi
+        following={following}
+        onUnfollow={handleUnfollow}
+      />
+    </div>
+  );
+}
+# components/layout/following/FollowingUi.tsx
+import React from "react";
+
+interface FollowingProps {
+  following: { id: string; name: string; isFollowing: boolean }[];
+  onUnfollow: (userId: string) => void; // Callback to handle unfollow
+}
+
+const FollowingUi: React.FC<FollowingProps> = ({ following, onUnfollow }) => {
+  return (
+    <div className="flex flex-col p-4 bg-gray-50 rounded-md shadow-md max-h-80 overflow-y-auto">
+      {following.map(({ id, name }) => (
+        <div
+          key={id}
+          className="flex items-center justify-between p-4 bg-white border border-gray-300 rounded-lg shadow-sm mb-2"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow-lg">
+              {name[0].toUpperCase()}
+            </div>
+            <span className="text-gray-800 font-medium text-sm">{name}</span>
+          </div>
+          <button
+            onClick={() => onUnfollow(id)}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+          >
+            Unfollow
+          </button>
+        </div>
+      ))}
+      {following.length === 0 && (
+        <p className="text-gray-500 text-center">No users being followed.</p>
+      )}
+    </div>
+  );
+};
+
+export default FollowingUi;
+
+# components/layout/following/Following.css
+
+# components/layout/routing/Routing.tsx
+// components/layout/routing/Routing.tsx
+import { Routes, Route } from "react-router-dom";
+import Layout from "../layout/Layout";
+import Profile from "../../posts/profile/Profile";
+import Feed from "../../posts/feed/Feed";
+import LoginPage from "../login/login";
+import LogoutPage from "../logout/logout";
+import NotFound from "../not-found/NotFound";
+
+export default function Routing(): JSX.Element {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/logout" element={<LogoutPage />} />
+
+      {/* Protected routes inside Layout */}
+      <Route path="/" element={<Layout />}>
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/feed" element={<Feed />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
+  );
+}
+
+# components/layout/login/login.tsx
+import React, { useState, useContext, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
+import auth from "../../../services/auth";
+import { AuthContext } from "../../auth/Auth";
+
+export default function LoginPage() {
+  enum AuthType {
+    Login = "login",
+    Signup = "signup",
+  }
+
+  const navigate = useNavigate();
+  const { newLogin } = useContext(AuthContext)!;
+
+  const [authType, setAuthType] = useState<AuthType>(AuthType.Login);
+  const [error, setError] = useState<string | null>(null);
+  const [passwordFeedback, setPasswordFeedback] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    specialChar: false,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showValidationToast, setShowValidationToast] = useState(false);
+  const [isToastDragged, setIsToastDragged] = useState(false);
+
+  const toastRef = useRef<HTMLDivElement | null>(null);
+
+  const validateName = (name: string): boolean => {
+    const nameRegex = /^[a-zA-Z ]{6,}$/;
+    return nameRegex.test(name);
+  };
+
+  const validateUsername = (username: string): boolean => {
+    const usernameRegex = /^[a-zA-Z0-9]{6,}$/;
+    return usernameRegex.test(username);
+  };
+
+  const validatePassword = (password: string): boolean => {
+    const length = password.length >= 6;
+    const uppercase = /[A-Z]/.test(password);
+    const lowercase = /[a-z]/.test(password);
+    const number = /\d/.test(password);
+    const specialChar = /[!@#$%^&*]/.test(password);
+
+    setPasswordFeedback({ length, uppercase, lowercase, number, specialChar });
+    return length && uppercase && lowercase && number && specialChar;
+  };
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    const toast = toastRef.current;
+    if (!toast) return;
+
+    const shiftX = e.clientX - toast.getBoundingClientRect().left;
+    const shiftY = e.clientY - toast.getBoundingClientRect().top;
+
+    const onMouseMove = (event: MouseEvent) => {
+      toast.style.left = `${event.clientX - shiftX}px`;
+      toast.style.top = `${event.clientY - shiftY}px`;
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+
+    document.addEventListener(
+      "mouseup",
+      () => {
+        document.removeEventListener("mousemove", onMouseMove);
+      },
+      { once: true }
+    );
+
+    setIsToastDragged(true);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+
+    const username = data.get("username") as string;
+    const password = data.get("password") as string;
+
+    try {
+      let jwt: string;
+      
+      if (authType === AuthType.Signup) {
+        const name = data.get("name") as string;
+        if (!name) {
+          setError("Name is required");
+          return;
+        }
+        
+        const nameValid = validateName(name);
+        const usernameValid = validateUsername(username);
+        const passwordValid = validatePassword(password);
+
+        if (!nameValid || !usernameValid || !passwordValid) {
+          setShowValidationToast(true);
+          setError("Some fields do not meet the requirements.");
+          return;
+        }
+
+        jwt = await auth.signup({ username, password, name });
+      } else {
+        jwt = await auth.login({ username, password });
+      }
+
+      newLogin(jwt);
+      document.cookie = `auth=${jwt}; path=/; secure; SameSite=Strict`;
+      navigate("/");
+    } catch (err) {
+      console.error("Authentication failed:", err);
+      setError("Authentication failed. Please try again.");
+    }
+  };
+  
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="w-full max-w-md p-6 bg-white shadow-md rounded-md">
+        <h1 className="text-2xl font-bold text-center mb-6">
+          {authType === AuthType.Login ? "Sign In" : "Sign Up"}
+        </h1>
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {authType === AuthType.Signup && (
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          )}
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="relative">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <div className="flex items-center mt-1">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                onChange={(e) => validatePassword(e.target.value)}
+                onFocus={() => authType === AuthType.Signup && setShowValidationToast(true)}
+                className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="ml-2 text-gray-500 hover:text-gray-700"
+                title={showPassword ? "Hide Password" : "Show Password"}
+              >
+                {showPassword ? <EyeOff /> : <Eye />}
+              </button>
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {authType === AuthType.Login ? "Sign In" : "Sign Up"}
+          </button>
+          <div className="flex justify-between items-center text-sm mt-4">
+            <button
+              type="button"
+              onClick={() =>
+                setAuthType(authType === AuthType.Login ? AuthType.Signup : AuthType.Login)
+              }
+              className="text-blue-500 hover:underline"
+            >
+              {authType === AuthType.Login
+                ? "Don't have an account? Sign Up"
+                : "Already have an account? Sign In"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {authType === AuthType.Signup && showValidationToast && (
+        <div
+          ref={toastRef}
+          className={`absolute top-4 right-4 bg-white shadow-lg rounded-md p-4 border ${
+            isToastDragged ? "cursor-move" : "cursor-pointer"
+          }`}
+          onMouseDown={handleDragStart}
+        >
+          <h2 className="text-lg font-semibold text-gray-700">Validation Requirements</h2>
+          <ul className="mt-2 text-sm text-gray-600">
+            <li className={passwordFeedback.length ? "text-green-500" : "text-red-500"}>
+              At least 6 characters
+            </li>
+            <li className={passwordFeedback.uppercase ? "text-green-500" : "text-red-500"}>
+              At least one uppercase letter
+            </li>
+            <li className={passwordFeedback.lowercase ? "text-green-500" : "text-red-500"}>
+              At least one lowercase letter
+            </li>
+            <li className={passwordFeedback.number ? "text-green-500" : "text-red-500"}>
+              At least one number
+            </li>
+            <li className={passwordFeedback.specialChar ? "text-green-500" : "text-red-500"}>
+              At least one special character (!@#$%^&*)
+            </li>
+          </ul>
+          <button
+            onClick={() => setShowValidationToast(false)}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Close
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+# components/layout/header/Header.tsx
+// Header.tsx
+import useUsername from '../../../hooks/useUsername';
+import { ResponsiveAppBar } from './MuiHeader';
+
+export default function Header() {
+  const links = [
+    { path: '/profile', name: 'Profile', type: 'menu' as const },
+    { path: '/feed', name: 'Feed', type: 'menu' as const },
+    { path: '/logout', name: 'Logout', type: 'settings' as const },
+    { path: '/logouta', name: 'Logouta', type: 'settings' as const },
+  ];
+
+  const profilePicUrl = "https://cdn.ozari.co.il/beery/noop.jpeg"; // Replace with dynamic URL
+  const username = useUsername();
+
+  return (
+    <ResponsiveAppBar
+      links={links}
+      profilePicUrl={profilePicUrl}
+      username={username}
+    />
+  );
+}
+
+# components/layout/header/Header.css
+.Header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center; /* Ensures alignment of nav and logo */
+    padding: 10px;
+    background-color: #f8f9fa; /* Light gray background, similar to Bootstrap's */
+    border-bottom: 1px solid #dee2e6; /* Add subtle border */
+}
+
+.Header nav {
+    display: flex;
+    flex-direction: row;
+    gap: 15px; /* Adjust spacing between nav links */
+}
+
+.logob {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+    display: block;
+    border-radius: 50%; /* Optional: make logo circular */
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #495057; /* Default text color */
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 5px; /* Rounded corners */
+    transition: all 0.2s ease-in-out;
+}
+
+.nav-link.active {
+    color: #fff; /* Active link text color */
+    background-color: #007bff; /* Bootstrap primary color for active link */
+}
+
+.nav-link:hover {
+    color: #007bff; /* Change text color on hover */
+}
+
+# components/layout/header/MuiHeader.tsx
+import React, { useState } from "react";
+import { NavLink } from "react-router-dom";
+
+interface Link {
+  path: string;
+  name: string;
+  type: "menu" | "settings";
+}
+
+interface ResponsiveAppBarProps {
+  links: Link[];
+  profilePicUrl: string;
+  username: string;
+}
+
+export const ResponsiveAppBar: React.FC<ResponsiveAppBarProps> = ({
+  links,
+  profilePicUrl,
+  username,
+}) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const menuLinks = links.filter((link) => link.type === "menu");
+  const settingsLinks = links.filter((link) => link.type === "settings");
+
+  const toggleDropdown = () => setDropdownOpen((prev) => !prev);
+
+  return (
+    <header className="bg-blue-600 text-white shadow-md">
+      <div className="container mx-auto px-4 flex justify-between items-center h-16">
+        <div className="flex items-center space-x-4">
+          <span className="text-xl font-bold">LOGO</span>
+          <nav className="hidden md:flex space-x-4">
+            {menuLinks.map((link) => (
+              <NavLink
+                key={link.name}
+                to={link.path}
+                className={({ isActive }) =>
+                  `text-white ${
+                    isActive ? "underline font-semibold" : "hover:opacity-80"
+                  }`
+                }
+              >
+                {link.name}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <button
+              className="flex items-center space-x-2"
+              onClick={toggleDropdown}
+            >
+              <img
+                src={profilePicUrl}
+                alt={`${username} profile`}
+                className="w-8 h-8 rounded-full border"
+              />
+              <span>{username}</span>
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 bg-white text-black shadow-lg rounded-md">
+                {settingsLinks.map((link) => (
+                  <NavLink
+                    key={link.name}
+                    to={link.path}
+                    className="block px-4 py-2 hover:bg-gray-100"
+                  >
+                    {link.name}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+# components/utils/errors.ts
+// Custom error types
+export class AppError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'AppError';
+    }
+  }
+  
+  export class NetworkError extends AppError {
+    constructor(message: string, public statusCode?: number) {
+      super(message);
+      this.name = 'NetworkError';
+    }
+  }
+  
+  export class ValidationError extends AppError {
+    constructor(message: string, public field?: string) {
+      super(message);
+      this.name = 'ValidationError';
+    }
+  }
+  
+  // Type guard to check if an error is an instance of AppError
+  export function isAppError(error: unknown): error is AppError {
+    return error instanceof AppError;
+  }
+  
+  // Helper function to handle errors
+  export function handleError(error: unknown): string {
+    if (isAppError(error)) {
+      return error.message;
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return 'An unknown error occurred';
+  }
+  
+  // API error handler
+  export async function handleApiError<T>(
+    promise: Promise<T>
+  ): Promise<[T | null, string | null]> {
+    try {
+      const data = await promise;
+      return [data, null];
+    } catch (error) {
+      return [null, handleError(error)];
+    }
+  }
+# components/common/setTitle.ts
+import { useEffect } from "react";
+
+export default function setTitle(title: string) {
+    useEffect(() => {
+        document.title = title;
+    }, [title]);
+}
+# components/common/ProtectedRoute.tsx
+// components/common/ProtectedRoute.tsx
+import { Navigate } from "react-router-dom";
+
+interface ProtectedRouteProps {
+  element: JSX.Element;
+}
+
+export default function ProtectedRoute({ element }: ProtectedRouteProps): JSX.Element {
+  const isAuthenticated = (): boolean => {
+    // Check for 'auth' cookie or token logic
+    return document.cookie.split("; ").some((cookie) => cookie.startsWith("auth="));
+  };
+
+  return isAuthenticated() ? element : <Navigate to="/login" replace />;
+}
+
+# components/common/Loading.tsx
+import { useState } from 'react';
+
+interface LoadingProps {
+  isLoading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+}
+
+export default function Loading({ isLoading, error, onRetry }: LoadingProps) {
+  const [showError, setShowError] = useState(!!error);
+
+  const handleCloseError = () => setShowError(false);
+
+  return (
+    <>
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="w-16 h-16 border-4 border-t-blue-500 border-t-4 border-gray-200 rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {showError && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-11/12 max-w-md p-6">
+            <h2 className="text-2xl font-semibold text-red-600 mb-4 text-center">
+              Error
+            </h2>
+            <p className="text-gray-700 text-center mb-6">{error}</p>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+                onClick={handleCloseError}
+              >
+                Close
+              </button>
+              {onRetry && (
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  onClick={onRetry}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+# components/common/TinyEditor.tsx
+import { Editor } from '@tinymce/tinymce-react';
+
+interface TinyEditorProps {
+  value: string;
+  onChange: (content: string) => void;
+  placeholder?: string;
+  height?: number;
+}
+
+export default function TinyEditor({
+  value,
+  onChange,
+  placeholder = 'Type your content here...',
+  height = 300,
+}: TinyEditorProps) {
+  return (
+    <Editor
+      apiKey={import.meta.env.VITE_TINYMCE_KEY}
+      value={value}
+      init={{
+        height,
+        menubar: false,
+        plugins: ['lists', 'link', 'emoticons'],
+        toolbar: 'undo redo | bold italic | bullist numlist outdent indent | emoticons',
+        placeholder,
+        content_style: `
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+        `,
+      }}
+      onEditorChange={onChange}
+    />
+  );
+}
+
+# vite-env.d.ts
+/// <reference types="vite/client" />
+
+# hooks/useTitle.ts
+import { useEffect } from "react";
+
+export default function useTitle(title: string) {
+    useEffect(() => {
+        document.title = title;
+    }, [title]);
+}
+# hooks/useComments.ts
+import { useAppDispatch } from '../redux/hooks';
+import { addComment as addCommentAction } from '../redux/slices/profileSlice';
+import { CommentService } from '../services/auth-aware/CommentService';
+import useService from './useService';
+
+export const useComments = () => {
+  const dispatch = useAppDispatch();
+  const commentService = useService(CommentService);
+
+  const addComment = async (postId: string, body: string) => {
+    try {
+      const comment = await commentService.addComment(postId, body);
+      dispatch(addCommentAction({ postId, comment }));
+      return comment;
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      throw error;
+    }
+  };
+
+  const updateComment = async (commentId: string, body: string) => {
+    try {
+      return await commentService.updateComment(commentId, body);
+    } catch (error) {
+      console.error('Failed to update comment:', error);
+      throw error;
+    }
+  };
+
+  const deleteComment = async (commentId: string) => {
+    try {
+      await commentService.deleteComment(commentId);
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      throw error;
+    }
+  };
+
+  const getComments = async (postId: string) => {
+    try {
+      return await commentService.getComments(postId);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+      throw error;
+    }
+  };
+
+  return {
+    addComment,
+    updateComment,
+    deleteComment,
+    getComments
+  };
+};
+# hooks/useProfile.ts
+// hooks/useProfile.ts
+import { useAppDispatch } from '../redux/hooks';
+import { setLoading, setError, setPosts, addPost, updatePost, removePost, addComment } from '../redux/slices/profileSlice';
+import Profile from '../services/auth-aware/Profile';
+import PostDraft from '../models/posts/PostDraft';
+import useService from './useService';
+import { isAppError } from '../components/utils/errors';
+
+export const useProfile = () => {
+  const dispatch = useAppDispatch();
+  const profileService = useService(Profile);
+
+  const fetchPosts = async () => {
+    dispatch(setLoading(true));
+    try {
+      const posts = await profileService.getProfile();
+      // Sort posts: Newest (largest date) comes first
+      const sortedPosts = posts.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      dispatch(setPosts(sortedPosts));
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const createPost = async (newPost: PostDraft) => {
+    dispatch(setLoading(true));
+    try {
+      const post = await profileService.addPost(newPost);
+      dispatch(addPost(post));
+      return post;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const editPost = async (id: string, updatedPost: PostDraft) => {
+    dispatch(setLoading(true));
+    try {
+      const post = await profileService.updatePost(id, updatedPost);
+      dispatch(updatePost(post));
+      return post;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const deletePost = async (id: string) => {
+    dispatch(setLoading(true));
+    try {
+      await profileService.removePost(id);
+      dispatch(removePost(id));
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
+  const createComment = async (postId: string, body: string) => {
+    try {
+      const comment = await profileService.addComment(postId, body);
+      dispatch(addComment({ postId, comment }));
+      return comment;
+    } catch (error: unknown) {
+      if (isAppError(error)) {
+        dispatch(setError(error.message));
+      } else {
+        dispatch(setError('An unknown error occurred'));
+      }
+    }
+  };
+
+  return {
+    fetchPosts,
+    createPost,
+    editPost,
+    deletePost,
+    createComment
+  };
+};
+# hooks/useFollowing.ts
+
+import { useAppDispatch } from '../redux/hooks';
+import { setFollowing } from '../redux/slices/followingSlice';
+import { FollowersService } from '../services/auth-aware/FollowersService';
+import useService from './useService';
+
+export const useFollowing = () => {
+  const dispatch = useAppDispatch();
+  const followersService = useService(FollowersService);
+
+  const fetchFollowing = async () => {
+    try {
+      const following = await followersService.getFollowing();
+      dispatch(setFollowing(following));
+    } catch (error) {
+      console.error('Failed to fetch following:', error);
+      throw error;
+    }
+  };
+
+  return {
+    fetchFollowing
+  };
+};
+# hooks/useUsername.ts
+import { jwtDecode } from "jwt-decode";
+import { useContext, useMemo } from "react";
+import { AuthContext } from "../components/auth/Auth";
+import User from "../models/users/Users";
+
+export default function useUsername() {
+    const { jwt } = useContext(AuthContext)!;
+    // const {name} = jwtDecode<User>(jwt);
+  
+  const name = useMemo(() => {
+    const {name} = jwtDecode<User>(jwt);
+    return name;
+  }, [jwt]);
+    
+        return name;
+}
+
+# hooks/useFollowers.ts
+import { useAppDispatch } from '../redux/hooks';
+import { setFollowers } from '../redux/slices/followersSlice';
+import { removeFollowing } from '../redux/slices/followingSlice';
+import { FollowersService } from '../services/auth-aware/FollowersService';
+import useService from './useService';
+
+export const useFollowers = () => {
+  const dispatch = useAppDispatch();
+  const followersService = useService(FollowersService);
+
+  const fetchFollowers = async () => {
+    try {
+      const followers = await followersService.getFollowers();
+      dispatch(setFollowers(followers));
+    } catch (error) {
+      console.error('Failed to fetch followers:', error);
+    }
+  };
+
+  const follow = async (userId: string) => {
+    try {
+      await followersService.followUser(userId);
+      await fetchFollowers();
+    } catch (error) {
+      console.error('Failed to follow user:', error);
+      throw error;
+    }
+  };
+
+  const unfollow = async (userId: string) => {
+    try {
+      await followersService.unfollowUser(userId);
+      dispatch(removeFollowing(userId));
+      await fetchFollowers();
+    } catch (error) {
+      console.error('Failed to unfollow user:', error);
+      throw error;
+    }
+  };
+
+  return {
+    fetchFollowers,
+    follow,
+    unfollow
+  };
+};
+
+# hooks/useService.ts
+import axios from "axios";
+import { useContext, useMemo } from "react";
+import { AuthContext } from "../components/auth/Auth";
+
+export default function useService<T>(ServiceClass: new (axiosInstance: any) => T): T {
+  const { jwt } = useContext(AuthContext)!;
+
+  const axiosInstance = useMemo(() => {
+    return axios.create({
+      baseURL: import.meta.env.VITE_REST_SERVER_URL_SAFE,
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    });
+  }, [jwt]);
+
+  return useMemo(() => new ServiceClass(axiosInstance), [ServiceClass, axiosInstance]);
+}
+
+# redux/followersSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import User from '../models/users/Users';
+
+interface FollowersState {
+  followers: User[];
+}
+
+const initialState: FollowersState = {
+  followers: [],
+};
+
+export const followersSlice = createSlice({
+  name: 'followers',
+  initialState,
+  reducers: {
+    init: (state, action: PayloadAction<User[]>) => {
+      state.followers = action.payload;
+    },
+    unfollow: (state, action: PayloadAction<string>) => {
+      state.followers = state.followers.filter(user => user.id !== action.payload);
+    },
+    follow: (state, action: PayloadAction<User>) => {
+      state.followers.push(action.payload);
+    },
+  },
+});
+
+export const { init, unfollow, follow } = followersSlice.actions;
+
+export default followersSlice.reducer;
+
+# redux/slices/followersSlice.ts
+// redux/slices/followersSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import User from '../../models/users/Users';
+
+interface FollowersState {
+  followers: User[];
+}
+
+const initialState: FollowersState = {
+  followers: [],
+};
+
+const followersSlice = createSlice({
+  name: 'followers',
+  initialState,
+  reducers: {
+    setFollowers: (state, action: PayloadAction<User[]>) => {
+      state.followers = action.payload;
+    },
+    removeFollower: (state, action: PayloadAction<string>) => {
+      state.followers = state.followers.filter(user => user.id !== action.payload);
+    },
+    addFollower: (state, action: PayloadAction<User>) => {
+      state.followers.push(action.payload);
+    }
+  }
+});
+
+export const { setFollowers, removeFollower, addFollower } = followersSlice.actions;
+export default followersSlice.reducer;
+
+# redux/slices/authSlice.ts
+import { createSlice } from '@reduxjs/toolkit';
+
+interface AuthState {
+  isAuthenticated: boolean;
+}
+
+const initialState: AuthState = {
+  isAuthenticated: false,
+};
+
+export const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    login: (state) => {
+      state.isAuthenticated = true;
+    },
+    logout: (state) => {
+      state.isAuthenticated = false;
+    },
+  },
+});
+
+export const { login, logout } = authSlice.actions;
+export default authSlice.reducer;
+
+# redux/slices/profileSlice.ts
+// redux/slices/profileSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import Post from '../../models/posts/Post';
+import Comment from '../../models/comment/Comments';
+
+interface ProfileState {
+  posts: Post[];
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: ProfileState = {
+  posts: [],
+  loading: false,
+  error: null,
+};
+
+const profileSlice = createSlice({
+  name: 'profile',
+  initialState,
+  reducers: {
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
+    },
+    setPosts: (state, action: PayloadAction<Post[]>) => {
+      state.posts = action.payload;
+    },
+    addPost: (state, action: PayloadAction<Post>) => {
+      state.posts = [action.payload, ...state.posts];
+    },
+    updatePost: (state, action: PayloadAction<Post>) => {
+      const index = state.posts.findIndex(post => post.id === action.payload.id);
+      if (index !== -1) {
+        state.posts[index] = action.payload;
+      }
+    },
+    removePost: (state, action: PayloadAction<string>) => {
+      state.posts = state.posts.filter(post => post.id !== action.payload);
+    },
+    addComment: (state, action: PayloadAction<{ postId: string; comment: Comment }>) => {
+      const { postId, comment } = action.payload;
+      const post = state.posts.find(p => p.id === postId);
+      if (post) {
+        if (!post.comments) {
+          post.comments = [];
+        }
+        post.comments = [...post.comments, comment];
+      }
+    }
+  }
+});
+
+export const {
+  setLoading,
+  setError,
+  setPosts,
+  addPost,
+  updatePost,
+  removePost,
+  addComment
+} = profileSlice.actions;
+
+export default profileSlice.reducer;
+# redux/slices/followingSlice.ts
+
+// redux/slices/followingSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import User from '../../models/users/Users';
+
+interface FollowingState {
+  following: User[];
+}
+
+const initialState: FollowingState = {
+  following: [],
+};
+
+const followingSlice = createSlice({
+  name: 'following',
+  initialState,
+  reducers: {
+    setFollowing: (state, action: PayloadAction<User[]>) => {
+      state.following = action.payload;
+    },
+    removeFollowing: (state, action: PayloadAction<string>) => {
+      state.following = state.following.filter(user => user.id !== action.payload);
+    },
+    addFollowing: (state, action: PayloadAction<User>) => {
+      state.following.push(action.payload);
+    }
+  }
+});
+
+export const { setFollowing, removeFollowing, addFollowing } = followingSlice.actions;
+export default followingSlice.reducer;
+
+# redux/hooks.ts
+import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from './store';
+
+export const useAppDispatch = () => useDispatch<AppDispatch>();
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+# redux/store.ts
+import { configureStore } from '@reduxjs/toolkit';
+import profileReducer from './slices/profileSlice';
+import followersReducer from './slices/followersSlice';
+import followingReducer from './slices/followingSlice';
+
+const store = configureStore({
+  reducer: {
+    profile: profileReducer,
+    followers: followersReducer,
+    following: followingReducer,
+  },
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+export default store;
+# redux/followingSlice.ts
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import User from '../models/users/Users';
+
+interface FollowingState {
+    following: User[];
+}
+
+const initialState: FollowingState = {
+    following: []
+}
+
+export const followingSlice = createSlice({
+    name: 'following',
+    initialState,
+    reducers: {
+        init: (state, action: PayloadAction<User[]>) => {
+        state.following = action.payload;
+        }, 
+        unfollow: (state, action: PayloadAction<string>) => {
+            state.following = state.following.filter(user => user.id !== action.payload);
+        },
+        follow: (state, action: PayloadAction<User>) => {
+            state.following.push(action.payload);
+        }
+    }
+
+})
+
+export const { init, unfollow, follow } = followingSlice.actions
+
+export default followingSlice.reducer
+# services/auth-aware/CommentService.ts
+import Comment from "../../models/comment/Comments";
+import AuthAware from "./AuthAware";
+
+export class CommentService extends AuthAware {
+  async addComment(postId: string, body: string): Promise<Comment> {
+    try {
+      const response = await this.axiosInstance.post<Comment>(
+        `/comments/${postId}`,
+        { body }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      throw error;
+    }
+  }
+
+  async updateComment(commentId: string, body: string): Promise<Comment> {
+    try {
+      const response = await this.axiosInstance.patch<Comment>(
+        `/comments/${commentId}`,
+        { body }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      throw error;
+    }
+  }
+
+  async deleteComment(commentId: string): Promise<void> {
+    try {
+      await this.axiosInstance.delete(`/comments/${commentId}`);
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      throw error;
+    }
+  }
+
+  async getComments(postId: string): Promise<Comment[]> {
+    try {
+      const response = await this.axiosInstance.get<Comment[]>(`/comments/${postId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      throw error;
+    }
+  }
+}
+# services/auth-aware/FollowersService.ts
+import User from "../../models/users/Users";
+import AuthAware from "./AuthAware";
+
+export class FollowersService extends AuthAware {
+  async getFollowers(): Promise<User[]> {
+    const response = await this.axiosInstance.get<User[]>('/follows/followers');
+    return response.data;
+  }
+
+  async followUser(id: string) {
+    const result = await this.axiosInstance.post(`/follows/follow/${id}`);
+    return result.data;
+  }
+
+  async unfollowUser(id: string): Promise<void> {
+    const response = await this.axiosInstance.post(`/follows/unfollow/${id}`);
+    return response.data;
+  }
+
+  async getFollowing(): Promise<User[]> {
+    const response = await this.axiosInstance.get<User[]>('/follows/following');
+    return response.data;
+  }
+}
+# services/auth-aware/Feed.ts
+// services/auth-aware/Feed.ts
+import Post from "../../models/posts/Post";
+import AuthAware from "./AuthAware";
+
+export class FeedService extends AuthAware {
+  async getFeed(): Promise<Post[]> {
+    try {
+      const response = await this.axiosInstance.get<Post[]>('/feed');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching feed:', error);
+      throw error;
+    }
+  }
+}
+# services/auth-aware/Profile.ts
+// services/auth-aware/Profile.ts
+import Comment from "../../models/comment/Comments";
+import Post from "../../models/posts/Post";
+import PostDraft from "../../models/posts/PostDraft";
+import AuthAware from "./AuthAware";
+
+export default class Profile extends AuthAware {
+  private baseUrl = import.meta.env.VITE_REST_SERVER_URL_SAFE;
+
+  async getProfile(): Promise<Post[]> {
+    try {
+      console.log("Fetching posts from:", `${this.baseUrl}/profile`);
+      const response = await this.axiosInstance.get<Post[]>(
+        `${this.baseUrl}/profile`
+      );
+      console.log("API Response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      throw error;
+    }
+  }
+
+  async addPost(post: PostDraft): Promise<Post> {
+    try {
+      const response = await this.axiosInstance.post(
+        `${this.baseUrl}/profile`,
+        post
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error adding post:", error);
+      throw error;
+    }
+  }
+
+  async updatePost(id: string, post: PostDraft): Promise<Post> {
+    try {
+      const response = await this.axiosInstance.patch(
+        `${this.baseUrl}/profile/${id}`,
+        post
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating post:", error);
+      throw error;
+    }
+  }
+
+  async removePost(id: string): Promise<void> {
+    try {
+      await this.axiosInstance.delete(`${this.baseUrl}/profile/${id}`);
+    } catch (error) {
+      console.error("Error removing post:", error);
+      throw error;
+    }
+  }
+
+  async addComment(postId: string, body: string): Promise<Comment> {
+    try {
+      const response = await this.axiosInstance.post(
+        `${this.baseUrl}/comments/${postId}`,
+        { body }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      throw error;
+    }
+  }
+}
+
+# services/auth-aware/AuthAware.ts
+import { AxiosInstance } from "axios";
+
+export default abstract class AuthAware {
+    constructor(public axiosInstance: AxiosInstance) {
+        
+    }
+}
+# services/updatePost.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+import PostDraft from "../models/posts/PostDraft";
+
+export default async function updatePost(id: string, post: PostDraft): Promise<Post> {
+// now we will make that post .title and .body will be into a json object
+console.log("Post:", post);
+const jsonData = JSON.stringify(post);
+  const response = await axios.patch(
+    `${import.meta.env.VITE_REST_SERVER_URL}/posts/${id}`,
+    jsonData,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log("Response from updatePost:", response);
+  return response.data
+}
+
+# services/Feed.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+
+class Feed {
+    async getFeed(): Promise<Post[]> {
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/feed`);
+        return response.data;
+    }
+}
+
+const feed = new Feed();
+console.log(feed);
+export default feed;
+# services/Profile.ts
+// services/Profile.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+import PostDraft from "../models/posts/PostDraft";
+import Comment from "../models/comment/Comments";
+
+class Profile {
+    private baseURL: string;
+
+    constructor() {
+        this.baseURL = import.meta.env.VITE_REST_SERVER_URL;
+        console.log("API Base URL:", this.baseURL); // Debug log
+    }
+
+    async getProfile(): Promise<Post[]> {
+        try {
+            console.log("Fetching posts from:", `${this.baseURL}/profile`); // Debug log
+            const response = await axios.get<Post[]>(`${this.baseURL}/profile`);
+            console.log("API Response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching posts:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async addPost(post: PostDraft): Promise<Post> {
+        try {
+            console.log("Adding post:", post); // Debug log
+            const response = await axios.post(
+                `${this.baseURL}/profile`,
+                post,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("Add post response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error adding post:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async updatePost(id: string, post: PostDraft): Promise<Post> {
+        try {
+            console.log("Updating post:", id, post); // Debug log
+            const response = await axios.patch(
+                `${this.baseURL}/profile/${id}`,
+                post,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("Update post response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error updating post:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async removePost(id: string): Promise<void> {
+        try {
+            console.log("Removing post:", id); // Debug log
+            await axios.delete(`${this.baseURL}/profile/${id}`);
+            console.log("Post removed successfully"); // Debug log
+        } catch (error) {
+            console.error("Error removing post:", error); // Debug log
+            throw error;
+        }
+    }
+
+    async addComment(postId: string, body: string): Promise<Comment> {
+        try {
+            console.log("Adding comment to post:", postId, body); // Debug log
+            const response = await axios.post(
+                `${this.baseURL}/comments/${postId}`,
+                { body },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("Add comment response:", response.data); // Debug log
+            return response.data;
+        } catch (error) {
+            console.error("Error adding comment:", error); // Debug log
+            throw error;
+        }
+    }
+}
+
+const profile = new Profile();
+export default profile;
+# services/GetSinglePost.ts
+import axios from "axios";
+import Post from "../models/posts/Post";
+// import PostDraft from "../models/posts/PostDraft";
+
+class GetSinglePost {
+    async getSinglePost(id:string): Promise<Post[]> {
+        const response = await axios.get<Post[]>(`${import.meta.env.VITE_REST_SERVER_URL}/posts/${id}`);
+        return response.data;
+    }
+
+}
+
+const getSinglePost = new GetSinglePost();
+console.log(getSinglePost);
+export default getSinglePost;
+# services/auth.ts
+import axios from "axios";
+import Login from "../models/users/Login";
+import Signup from "../models/users/Signup";
+
+class Auth {
+    async login(login: Login) {
+        const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/login`, {
+            username: login.username,
+            password: login.password
+        });
+    return response.data.jwt;
+    }
+    
+    async signup(signup: Signup) {
+        const response = await axios.post<{jwt: string}>(`${import.meta.env.VITE_REST_SERVER_URL_SAFE}/auth/signup`, signup);
+    return response.data.jwt;
+    }
+
+}
+const auth = new Auth();
+export default auth;
+# services/InsertPost.ts
+import axios from "axios";
+import PostDraft from "../models/posts/PostDraft";
+import PostModel from '../models/posts/Post';
+
+export default async function InsertPost(post: PostDraft):Promise<PostModel> {
+  const jsonData = JSON.stringify(post);
+  const response = await axios.post(
+    `${import.meta.env.VITE_REST_SERVER_URL}/posts`,
+    jsonData,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log(response);
+  return response.data as PostModel;
+}
+
