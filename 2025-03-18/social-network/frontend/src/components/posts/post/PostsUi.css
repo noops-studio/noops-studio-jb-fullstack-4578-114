@@ -1,0 +1,41 @@
+.post-card {
+    margin: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .post-header {
+    display: flex;
+    align-items: center;
+  }
+  
+  .profile-pic {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .post-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  
+  .post-body {
+    margin-top: 16px;
+  }
+  
+  .comment-item {
+    margin-bottom: 12px;
+  }
+  
+  .submit-comment {
+    margin-top: 16px;
+  }
+  

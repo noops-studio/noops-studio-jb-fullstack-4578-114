@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  jb-database:
+    build:
+      context: ./database
+      dockerfile: Dockerfile
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+      MYSQL_DATABASE: twitter
+      MYSQL_TCP_PORT: "3306"
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  jb-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      jb-database:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: "prod"
+
+  jb-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      jb-database:
+        condition: service_healthy
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:
