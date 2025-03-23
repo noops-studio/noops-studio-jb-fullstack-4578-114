@@ -1,0 +1,1317 @@
+
+# config/custom-environment-variables.json
+{
+    "app": {
+        "name": "APP_NAME",
+        "port": "APP_PORT",
+        "secret": "APP_SECRET"
+    },
+    "db": {
+        "password": "DB_PASSWORD"
+    }
+}
+# config/qa.json
+{
+    "app": {
+        "port": "3005",
+        "name": ""
+    }
+}
+# config/test.json
+{
+    "db": {
+      "host": "localhost",
+      "username": "root",
+      "password": "",
+      "database": "twitter",
+      "dialect": "mysql"
+    },
+    "app": {
+        "port": "3000",
+        "name": "twitter dev",
+        "secret": "MySecret",
+        "jwtSecret": "myJwtSecret"
+    }
+  }
+  
+# config/default.json
+{
+    "app": {
+        "port": "3000",
+        "name": "twitter dev",
+        "secret": "MySecret",
+        "jwtSecret": "myJwtSecret"
+    },
+    "db": {
+        "host": "localhost",
+        "port": 3306,
+        "username": "root",
+        "password": "",
+        "database": "twitter"
+    },
+    "sequelize": {
+        "logging": true,
+        "sync": {
+            "force": false
+        }
+    },
+    "s3":{
+        "isLocalstack": true,
+        "bucket": "test",
+        "connection": {
+            "region": "us-east-1",
+            "forcePathStyle": true,
+            "credentials": {
+              "accessKeyId": "test",
+              "secretAccessKey": "test"
+            },
+            "endpoint": "http://localhost:4566"
+        }
+    },
+    "io": {
+        "url": "ws//localhost:3000"
+    },
+    "sqs": {
+        "isLocalstack": true,
+        "connection": {
+            "region": "us-east-1",
+            "credentials": {
+              "accessKeyId": "test"
+            }
+        }
+    }
+}
+# config/prod.json
+{
+    "app": {
+        "port": "3000"
+    },
+    "db": {
+        "host": "jb-database"
+    },
+    "sequelize": {
+        "logging": false,
+        "sync": {
+            "force": false
+        }
+    }
+}
+# Dockerfile
+FROM node:22-alpine
+
+# workdir = mkdir + cd
+WORKDIR /app 
+
+COPY ./package*.json ./
+
+RUN npm install
+
+COPY ./ ./
+
+# this will create a "dist" folder on the image, with all the .js files
+RUN npm run build
+
+# since we don't need typescript files anymore, we can get rid of them
+RUN rm -rf ./src
+
+# the npm start command, will run "node dist/app.js" so the server runs efficiently and not
+# via ts-node
+CMD ["npm", "start"]
+# jest.config.js
+/** @type {import('ts-jest').JestConfigWithTsJest} **/
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  testMatch: ["**/__tests__/**/*.test.ts"],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"], // Add this line
+};
+
+# .dockerignore
+node_modules
+dist
+# jest.setup.ts
+import { start } from "./src/app";
+import sequelize from "./src/db/sequelize";
+
+// jest.setTimeout(10000);
+
+beforeAll(async () => {
+  await start();
+});
+
+beforeEach(async () => {
+  await sequelize.sync({ alter: false }); // Reset the database before each test suite
+});
+
+afterAll(async () => {
+  await sequelize.close();
+});
+
+# package.json
+{
+  "name": "06-social-network-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "test": "NODE_ENV=test jest --coverage",
+    "test:watch": "jest --watch",
+    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.758.0",
+    "@aws-sdk/lib-storage": "^3.758.0",
+    "@types/cors": "^2.8.17",
+    "@types/uuid": "^10.0.0",
+    "axios": "^1.7.9",
+    "config": "^3.3.12",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "express": "^4.21.2",
+    "express-fileupload": "^1.5.1",
+    "http-status-codes": "^2.3.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21",
+    "mysql2": "^3.12.0",
+    "sequelize": "^6.37.5",
+    "sequelize-typescript": "^2.1.6",
+    "socket-enums-snoops": "^1.0.0",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/config": "^3.3.5",
+    "@types/express": "^5.0.0",
+    "@types/express-fileupload": "^1.5.1",
+    "@types/jest": "^29.5.14",
+    "@types/joi": "^17.2.2",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/node": "^22.13.1",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2"
+  }
+}
+
+# tsconfig.json
+{
+  "compilerOptions": {
+    /* Visit https://aka.ms/tsconfig to read more about this file */
+
+    /* Projects */
+    // "incremental": true,                              /* Save .tsbuildinfo files to allow for incremental compilation of projects. */
+    // "composite": true,                                /* Enable constraints that allow a TypeScript project to be used with project references. */
+    // "tsBuildInfoFile": "./.tsbuildinfo",              /* Specify the path to .tsbuildinfo incremental compilation file. */
+    // "disableSourceOfProjectReferenceRedirect": true,  /* Disable preferring source files instead of declaration files when referencing composite projects. */
+    // "disableSolutionSearching": true,                 /* Opt a project out of multi-project reference checking when editing. */
+    // "disableReferencedProjectLoad": true,             /* Reduce the number of projects loaded automatically by TypeScript. */
+
+    /* Language and Environment */
+    "target": "ES2017",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+    // "lib": [],                                        /* Specify a set of bundled library declaration files that describe the target runtime environment. */
+    // "jsx": "preserve",                                /* Specify what JSX code is generated. */
+    "experimentalDecorators": true,                   /* Enable experimental support for legacy experimental decorators. */
+    "emitDecoratorMetadata": true,                    /* Emit design-type metadata for decorated declarations in source files. */
+    // "jsxFactory": "",                                 /* Specify the JSX factory function used when targeting React JSX emit, e.g. 'React.createElement' or 'h'. */
+    // "jsxFragmentFactory": "",                         /* Specify the JSX Fragment reference used for fragments when targeting React JSX emit e.g. 'React.Fragment' or 'Fragment'. */
+    // "jsxImportSource": "",                            /* Specify module specifier used to import the JSX factory functions when using 'jsx: react-jsx*'. */
+    // "reactNamespace": "",                             /* Specify the object invoked for 'createElement'. This only applies when targeting 'react' JSX emit. */
+    // "noLib": true,                                    /* Disable including any library files, including the default lib.d.ts. */
+    // "useDefineForClassFields": true,                  /* Emit ECMAScript-standard-compliant class fields. */
+    // "moduleDetection": "auto",                        /* Control what method is used to detect module-format JS files. */
+
+    /* Modules */
+    "module": "CommonJS",                                /* Specify what module code is generated. */
+    // "rootDir": "./",                                  /* Specify the root folder within your source files. */
+    // "moduleResolution": "node10",                     /* Specify how TypeScript looks up a file from a given module specifier. */
+    // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
+    // "paths": {},                                      /* Specify a set of entries that re-map imports to additional lookup locations. */
+    // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
+    // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */
+    // "types": [],                                      /* Specify type package names to be included without being referenced in a source file. */
+    // "allowUmdGlobalAccess": true,                     /* Allow accessing UMD globals from modules. */
+    // "moduleSuffixes": [],                             /* List of file name suffixes to search when resolving a module. */
+    // "allowImportingTsExtensions": true,               /* Allow imports to include TypeScript file extensions. Requires '--moduleResolution bundler' and either '--noEmit' or '--emitDeclarationOnly' to be set. */
+    // "rewriteRelativeImportExtensions": true,          /* Rewrite '.ts', '.tsx', '.mts', and '.cts' file extensions in relative import paths to their JavaScript equivalent in output files. */
+    // "resolvePackageJsonExports": true,                /* Use the package.json 'exports' field when resolving package imports. */
+    // "resolvePackageJsonImports": true,                /* Use the package.json 'imports' field when resolving imports. */
+    // "customConditions": [],                           /* Conditions to set in addition to the resolver-specific defaults when resolving imports. */
+    // "noUncheckedSideEffectImports": true,             /* Check side effect imports. */
+    // "resolveJsonModule": true,                        /* Enable importing .json files. */
+    // "allowArbitraryExtensions": true,                 /* Enable importing files with any extension, provided a declaration file is present. */
+    // "noResolve": true,                                /* Disallow 'import's, 'require's or '<reference>'s from expanding the number of files TypeScript should add to a project. */
+
+    /* JavaScript Support */
+    // "allowJs": true,                                  /* Allow JavaScript files to be a part of your program. Use the 'checkJS' option to get errors from these files. */
+    // "checkJs": true,                                  /* Enable error reporting in type-checked JavaScript files. */
+    // "maxNodeModuleJsDepth": 1,                        /* Specify the maximum folder depth used for checking JavaScript files from 'node_modules'. Only applicable with 'allowJs'. */
+
+    /* Emit */
+    // "declaration": true,                              /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
+    // "declarationMap": true,                           /* Create sourcemaps for d.ts files. */
+    // "emitDeclarationOnly": true,                      /* Only output d.ts files and not JavaScript files. */
+    // "sourceMap": true,                                /* Create source map files for emitted JavaScript files. */
+    // "inlineSourceMap": true,                          /* Include sourcemap files inside the emitted JavaScript. */
+    // "noEmit": true,                                   /* Disable emitting files from a compilation. */
+    // "outFile": "./",                                  /* Specify a file that bundles all outputs into one JavaScript file. If 'declaration' is true, also designates a file that bundles all .d.ts output. */
+    "outDir": "./dist",                                   /* Specify an output folder for all emitted files. */
+    // "removeComments": true,                           /* Disable emitting comments. */
+    // "importHelpers": true,                            /* Allow importing helper functions from tslib once per project, instead of including them per-file. */
+    // "downlevelIteration": true,                       /* Emit more compliant, but verbose and less performant JavaScript for iteration. */
+    // "sourceRoot": "",                                 /* Specify the root path for debuggers to find the reference source code. */
+    // "mapRoot": "",                                    /* Specify the location where debugger should locate map files instead of generated locations. */
+    // "inlineSources": true,                            /* Include source code in the sourcemaps inside the emitted JavaScript. */
+    // "emitBOM": true,                                  /* Emit a UTF-8 Byte Order Mark (BOM) in the beginning of output files. */
+    // "newLine": "crlf",                                /* Set the newline character for emitting files. */
+    // "stripInternal": true,                            /* Disable emitting declarations that have '@internal' in their JSDoc comments. */
+    // "noEmitHelpers": true,                            /* Disable generating custom helper functions like '__extends' in compiled output. */
+    // "noEmitOnError": true,                            /* Disable emitting files if any type checking errors are reported. */
+    // "preserveConstEnums": true,                       /* Disable erasing 'const enum' declarations in generated code. */
+    // "declarationDir": "./",                           /* Specify the output directory for generated declaration files. */
+
+    /* Interop Constraints */
+    // "isolatedModules": true,                          /* Ensure that each file can be safely transpiled without relying on other imports. */
+    // "verbatimModuleSyntax": true,                     /* Do not transform or elide any imports or exports not marked as type-only, ensuring they are written in the output file's format based on the 'module' setting. */
+    // "isolatedDeclarations": true,                     /* Require sufficient annotation on exports so other tools can trivially generate declaration files. */
+    // "allowSyntheticDefaultImports": true,             /* Allow 'import x from y' when a module doesn't have a default export. */
+    "esModuleInterop": true,                             /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */
+    // "preserveSymlinks": true,                         /* Disable resolving symlinks to their realpath. This correlates to the same flag in node. */
+    "forceConsistentCasingInFileNames": true,            /* Ensure that casing is correct in imports. */
+
+    /* Type Checking */
+    // "strict": true,                                      /* Enable all strict type-checking options. */
+    // "noImplicitAny": true,                            /* Enable error reporting for expressions and declarations with an implied 'any' type. */
+    // "strictNullChecks": true,                         /* When type checking, take into account 'null' and 'undefined'. */
+    // "strictFunctionTypes": true,                      /* When assigning functions, check to ensure parameters and the return values are subtype-compatible. */
+    // "strictBindCallApply": true,                      /* Check that the arguments for 'bind', 'call', and 'apply' methods match the original function. */
+    // "strictPropertyInitialization": true,             /* Check for class properties that are declared but not set in the constructor. */
+    // "strictBuiltinIteratorReturn": true,              /* Built-in iterators are instantiated with a 'TReturn' type of 'undefined' instead of 'any'. */
+    // "noImplicitThis": true,                           /* Enable error reporting when 'this' is given the type 'any'. */
+    // "useUnknownInCatchVariables": true,               /* Default catch clause variables as 'unknown' instead of 'any'. */
+    // "alwaysStrict": true,                             /* Ensure 'use strict' is always emitted. */
+    // "noUnusedLocals": true,                           /* Enable error reporting when local variables aren't read. */
+    // "noUnusedParameters": true,                       /* Raise an error when a function parameter isn't read. */
+    // "exactOptionalPropertyTypes": true,               /* Interpret optional property types as written, rather than adding 'undefined'. */
+    // "noImplicitReturns": true,                        /* Enable error reporting for codepaths that do not explicitly return in a function. */
+    // "noFallthroughCasesInSwitch": true,               /* Enable error reporting for fallthrough cases in switch statements. */
+    // "noUncheckedIndexedAccess": true,                 /* Add 'undefined' to a type when accessed using an index. */
+    // "noImplicitOverride": true,                       /* Ensure overriding members in derived classes are marked with an override modifier. */
+    // "noPropertyAccessFromIndexSignature": true,       /* Enforces using indexed accessors for keys declared using an indexed type. */
+    // "allowUnusedLabels": true,                        /* Disable error reporting for unused labels. */
+    // "allowUnreachableCode": true,                     /* Disable error reporting for unreachable code. */
+
+    /* Completeness */
+    // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
+    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+  }
+}
+
+# src/routers/comments.ts
+import { Router } from "express";
+import validation from "../middlewares/validation";
+import { newCommentParamsValidator, newCommentValidator } from "../controllers/comments/validator";
+import { createComment } from "../controllers/comments/controller";
+import paramsValidation from "../middlewares/params-validation";
+import enforceAuth from "../middlewares/enforce-auth";
+
+const router = Router()
+
+router.use(enforceAuth)
+
+router.post('/:postId', validation(newCommentValidator), paramsValidation(newCommentParamsValidator), createComment)
+export default router
+# src/routers/feed.ts
+import { Router } from "express";
+import { getFeed } from "../controllers/feed/controller";
+import enforceAuth from "../middlewares/enforce-auth";
+
+const router = Router()
+
+router.use(enforceAuth)
+
+router.get('/', getFeed)
+
+export default router
+# src/routers/follows.ts
+import { Router } from "express";
+import { follow, getFollowers, getFollowing, unfollow } from "../controllers/follows/controller";
+import paramsValidation from "../middlewares/params-validation";
+import { followValidator, unfollowValidator } from "../controllers/follows/validator";
+import enforceAuth from "../middlewares/enforce-auth";
+
+const router = Router()
+
+router.use(enforceAuth)
+
+router.get('/followers', getFollowers)
+router.get('/following', getFollowing)
+router.post('/follow/:id', paramsValidation(followValidator), follow)
+// i can also use regex validation for the route params
+// and then i don't need the validation middleware
+// however, i will personally prefer the middleware
+// router.post('/follow/:id(^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$)', follow)
+router.post('/unfollow/:id', paramsValidation(unfollowValidator), unfollow)
+
+export default router
+# src/routers/profile.ts
+import { Router } from "express";
+import { createPost, deletePost, getPost, getProfile, updatePost } from "../controllers/profile/controller";
+import validation from "../middlewares/validation";
+import { newPostFilesValidator, newPostValidator, updatePostValidator } from "../controllers/profile/validator";
+import enforceAuth from "../middlewares/enforce-auth";
+import filesValidation from "../middlewares/files-validation";
+import fileUploader from "../middlewares/file-uploader";
+
+const profileRouter = Router()
+
+profileRouter.use(enforceAuth)
+
+profileRouter.get('/', getProfile)
+profileRouter.get('/:id', getPost)
+profileRouter.delete('/:id', deletePost)
+profileRouter.post('/', validation(newPostValidator), filesValidation(newPostFilesValidator), fileUploader, createPost)
+profileRouter.patch('/:id', validation(updatePostValidator), updatePost)
+
+export default profileRouter
+# src/routers/index.ts
+// routers/index.ts
+import { Router } from "express";
+import profileRouter from "./profile";
+import commentsRouter from "./comments";
+import followsRouter from "./follows";
+import feedRouter from "./feed";
+import authRouter from "./auth";
+import { jwtExtractor } from "../middlewares/auth/jwt-auth";
+
+const router = Router();
+
+router.use((req, res, next) => {
+  if (req.path.startsWith("/auth")) {
+    return next();
+  }
+  return jwtExtractor(req, res, next);
+});
+
+router.use("/profile", profileRouter);
+router.use("/follows", followsRouter);
+router.use("/comments", commentsRouter);
+router.use("/feed", feedRouter);
+router.use("/auth", authRouter);
+
+export default router;
+
+# src/routers/auth.ts
+import { Router } from "express";
+import validation from "../middlewares/validation";
+import { loginValidator, signupValidator } from "../controllers/auth/validator";
+import { login, signup } from "../controllers/auth/controller";
+
+const router = Router()
+
+router.post('/login', validation(loginValidator), login)
+router.post('/signup', validation(signupValidator), signup)
+
+export default router
+# src/app.ts
+import express from "express";
+import config from "config";
+import sequelize from "./db/sequelize";
+import errorLogger from "./middlewares/error/error-logger";
+import errorResponder from "./middlewares/error/error-responder";
+import notFound from "./middlewares/not-found";
+import router from "./routers/index";
+import cors from "cors";
+import fileUpload from "express-fileupload";
+const force = config.get<boolean>('sequelize.sync.force');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(fileUpload());
+app.use(express.urlencoded({ extended: true }));
+
+// Use the main router
+app.use("/api", router);
+
+// Error handling
+app.use(notFound);
+app.use(errorLogger);
+app.use(errorResponder);
+
+// Function to start the app (Used in `server.ts`)
+export async function start() {
+  await sequelize.sync({ force });
+}
+
+
+
+// Export app for testing
+export default app;
+
+# src/io/io.ts
+import { io } from "socket.io-client";
+import config from "config";
+
+const socket = io(config.get<string>("io.url"))
+export default socket;
+# src/middlewares/validation.ts
+import { NextFunction, Request, Response } from "express";
+import { ObjectSchema } from "joi";
+import AppError from "../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+
+export default function validation(validator: ObjectSchema) {
+    return async function (req: Request, res: Response, next: NextFunction) {
+        try {
+            req.body = await validator.validateAsync(req.body)
+            next()
+        } catch (e) {
+            next(new AppError(StatusCodes.UNPROCESSABLE_ENTITY, e.message))
+        }
+    }
+}
+
+# src/middlewares/.DS_Store
+   Bud1            %                       a u t hdsclbool                   dsclbool                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @      €                                        @      €                                          @      €                                          @                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   E   %                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       DSDB                             `          €                                           @      €                                          @      €                                          @                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+# src/middlewares/files-validation.ts
+import { NextFunction, Request, Response } from "express";
+import { ObjectSchema } from "joi";
+import AppError from "../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+
+export default function filesValidation(validator: ObjectSchema) {
+    return async function (req: Request, res: Response, next: NextFunction) {
+        try {
+            req.files = await validator.validateAsync(req.files)
+            next()
+        } catch (e) {
+            next(new AppError(StatusCodes.UNPROCESSABLE_ENTITY, e.message))
+        }
+    }
+}
+        
+# src/middlewares/not-found.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+
+export default function notFound(req: Request, res: Response, next: NextFunction) {
+    next(new AppError(StatusCodes.NOT_FOUND, 'not found'))
+}
+# src/middlewares/auth/require-auth.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "../../errors/app-error";
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!(req as any).userId) {
+    return next(new AppError(401, "Unauthorized"));
+  }
+  next();
+}
+
+# src/middlewares/auth/jwt-auth.ts
+import { NextFunction, Request, Response } from "express";
+import { verify } from "jsonwebtoken";
+import config from "config";
+import AppError from "../../errors/app-error";
+
+export function jwtExtractor(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) {
+    console.log("Authorization header missing");  // Debugging
+    return next(new AppError(401, "Authorization header missing"));
+  }
+
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+
+  try {
+    const decoded = verify(token, config.get("app.jwtSecret"));
+    (req as any).userId = (decoded as any).id;
+    console.log("Extracted userId:", (req as any).userId);  // Debugging
+    next();
+  } catch (err) {
+    console.log("Invalid token:", err.message);  // Debugging
+    return next(new AppError(401, "Invalid token"));
+  }
+}
+
+
+# src/middlewares/params-validation.ts
+import { NextFunction, Request, Response } from "express";
+import { ObjectSchema } from "joi";
+import AppError from "../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+
+export default function paramsValidation(validator: ObjectSchema) {
+    return async function (req: Request, res: Response, next: NextFunction) {
+        try {
+            req.params = await validator.validateAsync(req.params)
+            next()
+        } catch (e) {
+            next(new AppError(StatusCodes.UNPROCESSABLE_ENTITY, e.message))
+        }
+    }
+}
+
+# src/middlewares/enforce-auth.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+import { verify } from "jsonwebtoken";
+import config from 'config'
+import User from "../models/user";
+
+declare global {
+    namespace Express {
+        interface Request {
+            userId: string
+        }
+    }
+}
+
+export default function enforceAuth(req: Request, res: Response, next: NextFunction) {
+    const authorizationHeader = req.headers.authorization
+
+    // Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Ijk3MmMyNGM1LWJhODctNDVlOC1iNjRkLWM2NDBkMDZjZGQyYSIsIm5hbWUiOiJzaGFoYXIiLCJ1c2VybmFtZSI6InNoYWhhcjE1IiwicGFzc3dvcmQiOiI3Zjc3MzdmZGRkMjg0MmJjMmFmZGJmMTg2OGFhYThlOTg2YjgzMTMzYTFmMDEwZmU5NjUzNWMxNWU0NTg0NjI4IiwiY3JlYXRlZEF0IjoiMjAyNS0wMi0xMVQxMzoyMDo0OC4wMDBaIiwidXBkYXRlZEF0IjoiMjAyNS0wMi0xMVQxMzoyMDo0OC4wMDBaIiwiaWF0IjoxNzQwMjk1NTA4fQ.MrDUauiwZiFDc3dtReSCDkbVSpNs1QXO5zo18tSgPgA
+
+    if (!authorizationHeader) return next(new AppError(StatusCodes.UNAUTHORIZED, 'missing authorization header'))
+
+    const parts = authorizationHeader.split(' ')
+
+    if (parts.length !== 2 ) return next(new AppError(StatusCodes.UNAUTHORIZED, 'bad authorization header'))
+    if (parts[0] !== 'Bearer' ) return next(new AppError(StatusCodes.UNAUTHORIZED, 'bad authorization header'))
+
+    try {
+        const user = verify(parts[1], config.get<string>('app.jwtSecret')) as User
+        req.userId = user.id
+        next()
+    } catch (e) {
+        next(new AppError(StatusCodes.UNAUTHORIZED, 'invalid JWT'))
+    }
+}
+
+# src/middlewares/file-uploader.ts
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
+import { NextFunction, Request, Response } from "express";
+import { UploadedFile } from "express-fileupload";
+import path from "path";
+import { v4 } from "uuid";
+import config from 'config'
+import s3Client from "../aws/aws";
+
+declare global {
+    namespace Express {
+        interface Request {
+            imageUrl?: string
+        }
+    }
+}
+
+export default async function fileUploader (req: Request, res: Response, next: NextFunction) {
+    if (!req.files) return next()
+
+    const postImage = req.files.postImage as UploadedFile
+
+    const upload = new Upload({
+        client: s3Client,
+        params: {
+            Bucket: config.get<string>('s3.bucket'),
+            Key: `${v4()}${path.extname(postImage.name)}`, 
+            Body: postImage.data,
+            ContentType: postImage.mimetype
+        }
+    })
+
+    const response = await upload.done()
+    
+    req.imageUrl = response.Location
+    next()
+}
+# src/middlewares/error/error-responder.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "../../errors/app-error";
+
+export default function errorResponder(err: Error, req: Request, res: Response, next: NextFunction) {
+    if(err instanceof AppError) {
+        res.status(err.status).send(err.message)
+    } else {
+        res.status(500).send(err.message)
+    }
+}
+# src/middlewares/error/error-logger.ts
+import { NextFunction, Request, Response } from "express";
+
+export default function errorLogger(err: Error, req: Request, res: Response, next: NextFunction) {
+    console.error(err.message)
+    next(err)
+}
+# src/models/follow.ts
+import { 
+    AllowNull, 
+    Column, 
+    DataType, 
+    Default, 
+    ForeignKey, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import User from "./user";
+
+@Table({
+    underscored: true
+})
+export default class Follow extends Model{
+
+    @PrimaryKey
+    @ForeignKey(() => User)
+    @Column(DataType.UUID)
+    followerId: string
+
+    @PrimaryKey
+    @ForeignKey(() => User)
+    @Column(DataType.UUID)
+    followeeId: string
+}
+
+# src/models/comment.ts
+import { 
+    AllowNull, 
+    BelongsTo, 
+    Column, 
+    DataType, 
+    Default, 
+    ForeignKey, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import Post from "./post";
+import User from "./user";
+
+@Table({
+    underscored: true,
+})
+export default class Comment extends Model{
+
+    @PrimaryKey
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    id: string
+    
+    @ForeignKey(() => Post)
+    @AllowNull(false)
+    @Column(DataType.UUID)
+    postId: string
+
+    @ForeignKey(() => User)
+    @AllowNull(false)
+    @Column(DataType.UUID)
+    userId: string
+
+    @AllowNull(false)
+    @Column(DataType.TEXT)
+    body: string
+
+    @BelongsTo(() => Post)
+    post: Post
+
+    @BelongsTo(() => User)
+    user: User
+
+}
+
+# src/models/user.ts
+import { 
+    AllowNull, 
+    BelongsToMany, 
+    Column, 
+    DataType, 
+    Default, 
+    HasMany, 
+    Index, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import Post from "./post";
+import Comment from "./comment";
+import Follow from "./follow";
+
+@Table({
+    underscored: true,
+})
+export default class User extends Model{
+
+    @PrimaryKey
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    id: string
+    
+    @AllowNull(false)
+    @Column(DataType.STRING(40))
+    name: string
+    
+    @Index({ unique: true })
+    @AllowNull(false)
+    @Column(DataType.STRING(40))
+    username: string
+    
+    @AllowNull(false)
+    @Column(DataType.STRING(64))
+    password: string
+
+    @HasMany(() => Post, {
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
+    })
+    posts: Post[]
+
+    @HasMany(() => Comment)
+    comments: Comment[]
+
+    @BelongsToMany(() => User, () => Follow, 'followeeId', 'followerId')
+    followers: User[]
+
+    @BelongsToMany(() => User, () => Follow, 'followerId', 'followeeId')
+    following: User[]
+
+}
+
+# src/models/post.ts
+import { 
+    AllowNull, 
+    BelongsTo, 
+    Column, 
+    DataType, 
+    Default, 
+    ForeignKey, 
+    HasMany, 
+    Model, 
+    PrimaryKey, 
+    Table 
+} from "sequelize-typescript";
+import User from "./user";
+import Comment from "./comment";
+
+@Table({
+    underscored: true
+})
+export default class Post extends Model{
+
+    @PrimaryKey
+    @Default(DataType.UUIDV4)
+    @Column(DataType.UUID)
+    id: string
+    
+    @ForeignKey(() => User)
+    @AllowNull(false)
+    @Column(DataType.UUID)
+    userId: string
+    
+    @AllowNull(false)
+    @Column(DataType.STRING(40))
+    title: string
+    
+    @AllowNull(false)
+    @Column(DataType.TEXT)
+    body: string
+
+    @AllowNull(true)
+    @Column(DataType.STRING(255))
+    imageUrl: string
+
+    @BelongsTo(() => User)
+    user: User
+
+    @HasMany(() => Comment)
+    comments: Comment[]
+
+}
+
+# src/db/sequelize.ts
+import { Sequelize } from "sequelize-typescript";
+import User from "../models/user";
+import config from 'config'
+import Post from "../models/post";
+import Comment from "../models/comment";
+import Follow from "../models/follow";
+
+const logging = config.get<boolean>('sequelize.logging') ? console.log : false
+
+const sequelize = new Sequelize({
+    models: [ User, Post, Comment, Follow ],
+    dialect: 'mysql',
+    ...config.get('db'),
+    logging,
+})
+
+export default sequelize
+# src/aws/aws.ts
+import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import config from 'config'
+
+// read the config of s3, and clone it deeply
+const s3Config = JSON.parse(JSON.stringify(config.get('s3.connection')))
+
+// if we're NOT running localstack, i.e. we want to run against AWS PRODUCTION servers
+// then we MUST delete the `endpoint` property from the config object
+if (!config.get<boolean>('s3.isLocalstack')) delete s3Config.endpoint
+
+// init the client
+const s3Client = new S3Client(s3Config)
+
+export async function createAppBucketIfNotExist() {
+    try {
+        await s3Client.send(
+            new CreateBucketCommand({
+                Bucket: config.get<string>('s3.bucket')
+            })
+        )
+    } catch (e) {
+        // ignore
+        console.log('Bucket probably already exist')
+    }
+}
+
+export default s3Client
+# src/errors/error-responder.ts
+import { NextFunction, Request, Response } from "express";
+import AppError from "./app-error";
+
+export default function errorResponder(err:Error , req : Request , res : Response, next : NextFunction){
+    if (err instanceof AppError){
+        return res.status(err.status).send(err.message)
+    }else{
+        res.status(500).send(err.message)
+    }
+}
+# src/errors/app-error.ts
+export default class AppError extends Error {
+    constructor(public status: number, message: string) {
+        super(message)
+    }
+}
+# src/controllers/comments/controller.ts
+import { NextFunction, Request, Response } from "express";
+import Comment from "../../models/comment";
+import User from "../../models/user";
+import { io } from "socket.io-client";
+import socket from "../../io/io";
+import SocketMessages from "socket-enums-snoops";
+
+export async function createComment(req: Request<{postId: string}>, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+
+        const { postId } = req.params 
+
+        const comment = await Comment.create({
+            userId,
+            postId,
+            ...req.body
+        })
+        await comment.reload({
+            include: [ User ]
+        })
+        res.json(comment)
+        socket.emit(SocketMessages.NEW_COMMENT, {
+            from: req.headers['x-client-id'], // req.header(), req.get()
+            data: comment
+        })
+    } catch (e) {
+        next(e)
+    }
+}
+# src/controllers/comments/validator.ts
+import Joi from "joi";
+
+export const newCommentValidator = Joi.object({
+    body: Joi.string().min(20).required()
+})
+
+export const newCommentParamsValidator = Joi.object({
+    postId: Joi.string().uuid().required()
+})
+# src/controllers/auth/controller.ts
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/user";
+import { createHmac } from "crypto";
+import config from 'config'
+import { sign } from "jsonwebtoken";
+import AppError from "../../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+
+
+function hashPassword(password: string): string {
+    return createHmac('sha256', config.get<string>('app.secret'))
+            .update(password)
+            .digest('hex')
+}
+
+export async function login(req: Request<{}, {}, {username: string, password: string}>, res: Response, next: NextFunction) {
+    try {
+        const { username, password } = req.body
+        const user = await User.findOne({
+            where: {
+                username,
+                password: hashPassword(password)
+            },
+        })
+
+        if(!user) return next(new AppError(StatusCodes.UNAUTHORIZED, 'wrong credentials'))
+
+
+        const jwt = sign(user.get({ plain: true }), config.get<string>('app.jwtSecret'))
+        res.json({ jwt })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function signup(req: Request<{}, {}, {username: string, password: string, name: string}>, res: Response, next: NextFunction) {
+    const { username, password, name } = req.body
+    try {
+
+        const user = await User.create({ 
+            username,
+            name,
+            password: hashPassword(password)
+        })
+
+        const jwt = sign(user.get({ plain: true }), config.get<string>('app.jwtSecret'))
+        res.json({ jwt })
+
+    } catch (e) {
+        // if (e.name === 'SequelizeUniqueConstraintError') return next({
+        //     status: 409,
+        //     message: `username ${username} already exists. Please choose another username.`
+        // })
+        if (e.name === 'SequelizeUniqueConstraintError') return next(
+            new AppError(
+                StatusCodes.CONFLICT, 
+                `username ${username} already exists. Please choose another username.`
+            )
+        )
+        next(e)
+    }
+}
+# src/controllers/auth/validator.ts
+import Joi from "joi";
+
+export const loginValidator = Joi.object({
+    username: Joi.string().alphanum().min(6).max(40).required(), 
+    password: Joi.string().min(6).max(40).required()
+})
+
+export const signupValidator = loginValidator.append({
+    name: Joi.string().min(2).max(40).required(),
+})
+
+# src/controllers/common/post-includes.ts
+import User from "../../models/user"
+import Comment from "../../models/comment"
+
+const postIncludes = {
+    include: [
+        User,
+        {
+            model: Comment,
+            include: [ User ]
+        }
+    ]
+}
+
+export default postIncludes
+# src/controllers/profile/validators.ts
+import Joi from "joi";
+
+export const newPostValidator = Joi.object({
+  title: Joi.string().min(10).required(),
+  body: Joi.string().min(20).allow("").required(),
+});
+
+export const newPostFileValidator = Joi.object({
+  postImage: Joi.object({
+    mimetype: Joi.string().valid("image/png", "image/jpg", "image/jpeg"),
+  })
+    .unknown(true)
+    .optional(),
+});
+
+export const editPostValidator = newPostValidator;
+
+# src/controllers/profile/controller.ts
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/user";
+import Post from "../../models/post";
+import Comment from "../../models/comment";
+import postIncludes from "../common/post-includes";
+import AppError from "../../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+import socket from "../../io/io";
+import SocketMessages from "socket-enums-snoops";
+
+export async function getProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+
+        const user = await User.findByPk(userId, {
+            include: [ {
+                model: Post,
+                ...postIncludes
+            } ],
+            order: [['createdAt', 'asc']]
+        })
+        // console.log(user.get({ plain: true }))
+        res.json(user.posts)
+
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function getPost(req: Request<{id: string}>, res: Response, next: NextFunction) {
+    try {
+        const post = await Post.findByPk(req.params.id, postIncludes)
+        res.json(post)
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function deletePost(req: Request<{id: string}>, res: Response, next: NextFunction) {
+        try {
+        // this is how you delete an EXISTING object:
+        // const post = await Post.findByPk(req.params.id)
+        // await post.destroy() 
+
+        // this is how you delete, using a static function,
+        // when you don't already have a sequelize object:
+        const id = req.params.id
+        const deletedRows = await Post.destroy({
+            where: { id }
+        })
+
+        if(deletedRows === 0) return next(new AppError(StatusCodes.NOT_FOUND, 'the post you were trying to delete does not exist'))
+
+        res.json({
+            success: true
+        })
+
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function createPost(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+
+        let createParams = { ...req.body, userId }
+
+        if(req.imageUrl) {
+            const { imageUrl } = req
+            createParams = { ...createParams, imageUrl }
+        }
+
+        const post = await Post.create(createParams)
+        await post.reload(postIncludes)
+        res.json(post)
+        socket.emit(SocketMessages.NEW_POST, {
+            from: req.headers['x-client-id'], // req.header(), req.get()
+            data: post
+        })
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function updatePost(req: Request<{id: string}>, res: Response, next: NextFunction) {
+    try {
+        const post = await Post.findByPk(req.params.id, postIncludes)
+
+        // an example to findAll
+        // const pos2 = await Post.findAll({where: {name: 'Gustav'}})
+
+        const { title, body } = req.body
+        post.title = title
+        post.body = body
+        await post.save() // <= this command generates the actual SQL UPDATE
+        res.json(post)
+
+    } catch (e) {
+        next(e)
+    }
+}
+
+# src/controllers/profile/validator.ts
+import Joi from "joi";
+
+export const newPostValidator = Joi.object({
+    title: Joi.string().min(10).max(40).required(),
+    body: Joi.string().min(20).required(),
+})
+
+export const newPostFilesValidator = Joi.object({
+    postImage: Joi.object({
+        mimetype: Joi.string().valid('image/png', 'image/jpg', 'image/jpeg')
+    }).unknown(true).optional() 
+})
+
+export const updatePostValidator = newPostValidator
+# src/controllers/feed/controller.ts
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/user";
+import Post from "../../models/post";
+import postIncludes from "../common/post-includes";
+import sequelize from "../../db/sequelize";
+
+export async function getFeed(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+
+        const user = await User.findByPk(userId, {
+            include: [ { 
+                model: User,
+                as: 'following',
+                include: [ { 
+                    model: Post,
+                    ...postIncludes
+                } ]
+            } ]
+        })
+
+        const feed = user.following.reduce((cumulative: Post[], { posts }) => {
+            return [...cumulative, ...posts]
+        }, []).sort((a: Post, b: Post) => a.createdAt < b.createdAt ? 1 : -1)
+
+        res.json(feed)        
+
+        // example how to do the same with RAW QUERY using sequelize:
+        // const feed = await sequelize.query(`
+        //     select	posts.*
+        //     from 	posts
+        //     JOIN	follows on posts.user_id = follows.followee_id
+        //     AND		follows.follower_id = ?
+        //     ORDER BY created_at DESC
+        // `, {
+        //     replacements: [ userId ],
+        //     model: Post
+        // })        
+
+        // await Promise.all(feed.map(post => post.reload({...postIncludes})))
+
+        // res.json(feed)
+    } catch (e) {
+        next(e)
+    }
+}
+# src/controllers/follows/controller.ts
+import { NextFunction, Request, Response } from "express";
+import User from "../../models/user";
+import Follow from "../../models/follow";
+import { col } from "sequelize";
+import AppError from "../../errors/app-error";
+import { StatusCodes } from "http-status-codes";
+
+export async function getFollowers(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+
+        const user = await User.findByPk(userId, {
+            include: [ { 
+                model: User,
+                as: 'followers',
+            } ],
+            order: [[col('followers.name'), 'ASC']],
+        })
+        res.json(user.followers)
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function getFollowing(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.userId
+
+        const user = await User.findByPk(userId, {
+            include: [ { 
+                model: User,
+                as: 'following'
+            } ]
+        })
+        res.json(user.following)
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function follow(req: Request<{id: string}>, res: Response, next: NextFunction) {
+
+    try {
+        const userId = req.userId
+        const follow = await Follow.create({
+            followerId: userId,
+            followeeId: req.params.id
+        })
+        res.json(follow)
+    } catch (e) {
+        next(e)
+    }
+}
+
+export async function unfollow(req: Request<{id: string}>, res: Response, next: NextFunction) {
+
+    try {
+        const userId = req.userId
+        const isUnfollowed = await Follow.destroy({
+            where: {
+                followerId: userId,
+                followeeId: req.params.id
+            }
+        })
+        if (!isUnfollowed) return next(new AppError(
+            StatusCodes.NOT_FOUND,
+            'tried to delete unexisting record'
+        ))
+        res.json({ success: true })
+    } catch (e) {
+        next(e)
+    }
+}
+# src/controllers/follows/validator.ts
+import Joi from "joi";
+
+export const followValidator = Joi.object({
+    id: Joi.string().uuid().required()
+})
+
+export const unfollowValidator = followValidator
+# src/server.ts
+
+import app, { start } from "./app"
+import config from 'config'
+
+const port = config.get<string>('app.port');
+const name = config.get<string>('app.name');
+
+(async () => {
+    await start()
+    app.listen(port, () => console.log(`${name} started on port ${port}...`))
+})()
+
+

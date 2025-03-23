@@ -1,0 +1,16 @@
+{
+    "db": {
+      "host": "localhost",
+      "username": "root",
+      "password": "",
+      "database": "twitter",
+      "dialect": "mysql"
+    },
+    "app": {
+        "port": "3000",
+        "name": "twitter dev",
+        "secret": "MySecret",
+        "jwtSecret": "myJwtSecret"
+    }
+  }
+  
