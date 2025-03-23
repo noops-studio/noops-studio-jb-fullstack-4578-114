@@ -7,6 +7,8 @@ import notFound from "./middlewares/not-found";
 import router from "./routers/index";
 import cors from "cors";
 import fileUpload from "express-fileupload";
+import { createAppBucketIfNotExist } from "./aws/aws";
+import { createQueueIfNotExist } from "./aws/sqs";
 const force = config.get<boolean>('sequelize.sync.force');
 
 const app = express();
@@ -26,6 +28,8 @@ app.use(errorResponder);
 // Function to start the app (Used in `server.ts`)
 export async function start() {
   await sequelize.sync({ force });
+  await createAppBucketIfNotExist();
+  await createQueueIfNotExist();
 }
 
 
