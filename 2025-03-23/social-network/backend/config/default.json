@@ -40,8 +40,9 @@
         "connection": {
             "region": "us-east-1",
             "credentials": {
-              "accessKeyId": "test"
-            },
+                "accessKeyId": "test",
+                "secretAccessKey": "test"
+              },
             "endpoint": "http://localhost:4566"
         }
     }
