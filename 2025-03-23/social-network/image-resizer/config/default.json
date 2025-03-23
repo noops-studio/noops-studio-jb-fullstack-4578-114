@@ -1,0 +1,13 @@
+{
+    "sqs": {
+        "queue": "snoops-jb-queue",
+        "isLocalstack": true,
+        "connection": {
+            "region": "us-east-1",
+            "credentials": {
+              "accessKeyId": "test"
+            },
+            "endpoint": "http://localhost:4566"
+        }
+    }
+}
