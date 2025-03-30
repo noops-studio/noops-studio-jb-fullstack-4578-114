@@ -1,13 +1,18 @@
-<div id="greed">
-    <header>
-        <app-header></app-header>
+<div id="grid" class="grid grid-cols-[1fr_3fr] grid-rows-[1fr_3fr_3fr_1fr] h-full">
+    <header class="row-start-1 col-span-2 border border-dashed border-[color:lightcoral]">
+      <app-header></app-header>
     </header>
-    <aside>
-        <!-- <app-sidebar></app-sidebar> -->
+    <aside class="row-start-2 col-start-1 border border-dashed border-[color:lightcoral]">
+      <app-following></app-following>
     </aside>
-    <main>
+    <aside class="row-start-3 col-start-1 border border-dashed border-[color:lightcoral]">
+      <app-followers></app-followers>
+    </aside>
+    <main class="row-start-2 row-span-2 col-start-2 overflow-auto border border-dashed border-[color:lightcoral]">
+      <app-profile></app-profile>
     </main>
-    <footer>
-        <app-footer></app-footer>
+    <footer class="row-start-4 col-span-2 border border-dashed border-[color:lightcoral]">
+      <app-footer></app-footer>
     </footer>
-</div>
+  </div>
+  

@@ -1,0 +1,258 @@
+
+# index.html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>02SocialNetworkClient</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
+
+# app/app.routes.ts
+import { Routes } from '@angular/router';
+
+export const routes: Routes = [];
+
+# app/components/posts/profile/profile.component.css
+
+# app/components/posts/profile/profile.component.html
+<p>{{name}}</p>
+<p>current time: {{correntTime}}</p>
+# app/components/posts/profile/profile.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-profile',
+  imports: [],
+  templateUrl: './profile.component.html',
+  styleUrl: './profile.component.css'
+})
+export class ProfileComponent {
+ name: string = 'John Doe';
+ correntTime: string = new Date().toLocaleTimeString();
+}
+
+# app/components/posts/profile/profile.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { ProfileComponent } from './profile.component';
+
+describe('ProfileComponent', () => {
+  let component: ProfileComponent;
+  let fixture: ComponentFixture<ProfileComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [ProfileComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(ProfileComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/app/app.component.html
+<app-layout></app-layout>
+
+# app/components/app/app.component.ts
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LayoutComponent } from "../layout/layout/layout.component";
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterOutlet, LayoutComponent],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
+})
+export class AppComponent {
+  title = '02-social-network-client';
+}
+
+# app/components/app/app.component.css
+
+# app/components/layout/footer/footer.component.css
+p { 
+    color: green;
+}
+# app/components/layout/footer/footer.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-footer',
+  imports: [],
+  templateUrl: './footer.component.html',
+  styleUrl: './footer.component.css'
+})
+export class FooterComponent {
+
+}
+
+# app/components/layout/footer/footer.component.html
+<p>footer works!</p>
+
+# app/components/layout/layout/layout.component.css
+#grid {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    grid-template-rows: 1fr 3fr 3fr 1fr;
+}
+
+#grid > * {
+    border: 1px dashed lightcoral;
+}
+
+#grid > header {
+    grid-row: 1;
+    grid-column: 1 / span 2;
+}
+
+#grid > aside:nth-child(0) {
+    grid-row: 2;
+    grid-column: 1;
+}
+
+#grid > aside:nth-child(1) {
+    grid-row: 3;
+    grid-column: 1;
+}
+
+#grid > main {
+    grid-row: 2 / span 2;
+    grid-column: 2;
+}
+
+#grid > footer {
+    grid-row: 4;
+    grid-column: 1 / span 2;
+}
+
+
+# app/components/layout/layout/layout.component.html
+<div id="grid">
+    <header>
+        <app-header></app-header>
+    </header>
+    <aside>
+        <app-following></app-following>
+    </aside>
+    <aside>
+        <app-followers></app-followers>
+    </aside>
+    <main>
+        <app-profile></app-profile>
+    </main>
+    <footer>
+        <app-footer></app-footer>
+    </footer>
+</div>
+# app/components/layout/layout/layout.component.ts
+import { Component } from '@angular/core';
+import { HeaderComponent } from "../header/header.component";
+import { FooterComponent } from "../footer/footer.component";
+import { FollowingComponent } from "../../follows/following/following.component";
+import { FollowersComponent } from "../../follows/followers/followers.component";
+import { ProfileComponent } from '../../posts/profile/profile.component';
+
+@Component({
+  selector: 'app-layout',
+  imports: [HeaderComponent, FooterComponent, FollowingComponent, FollowersComponent,ProfileComponent],
+  templateUrl: './layout.component.html',
+  styleUrl: './layout.component.css'
+})
+export class LayoutComponent {
+
+}
+
+# app/components/layout/header/header.component.html
+<p>header works!</p>
+
+# app/components/layout/header/header.component.css
+p {
+    color: red;
+}
+# app/components/layout/header/header.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-header',
+  imports: [],
+  templateUrl: './header.component.html',
+  styleUrl: './header.component.css'
+})
+export class HeaderComponent {
+
+}
+
+# app/components/follows/followers/followers.component.html
+<p>followers works!</p>
+
+# app/components/follows/followers/followers.component.css
+
+# app/components/follows/followers/followers.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-followers',
+  imports: [],
+  templateUrl: './followers.component.html',
+  styleUrl: './followers.component.css'
+})
+export class FollowersComponent {
+
+}
+
+# app/components/follows/following/following.component.css
+
+# app/components/follows/following/following.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-following',
+  imports: [],
+  templateUrl: './following.component.html',
+  styleUrl: './following.component.css'
+})
+export class FollowingComponent {
+
+}
+
+# app/components/follows/following/following.component.html
+<p>following works!</p>
+
+# app/app.config.ts
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideRouter(routes)]
+};
+
+# main.ts
+import { bootstrapApplication } from '@angular/platform-browser';
+import { appConfig } from './app/app.config';
+import { AppComponent } from './app/components/app/app.component';
+
+bootstrapApplication(AppComponent, appConfig)
+  .catch((err) => console.error(err));
+
+# styles.css
+/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+@import "tailwindcss/typography";
+@import "tailwindcss/forms";
+

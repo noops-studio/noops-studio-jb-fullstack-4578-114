@@ -1,0 +1,40 @@
+<!-- one way binding -->
+<p class="text-gray-800 text-base mb-4">{{name}}</p>
+<!-- <p class="text-gray-800 text-base mb-4">current time: {{correntTime | date | allcaps }}</p> -->
+
+<!-- two way binding -->
+<input
+  type="text"
+  class="border border-gray-300 p-2 rounded mb-2 w-full"
+  [(ngModel)]="correntTime"
+/>
+<p class="text-gray-700 text-sm mt-2">
+  current time: {{correntTime | date | allcaps }}
+</p>
+<hr class="my-4 border-t border-gray-200" />
+<input
+  type="text"
+  class="border border-gray-300 p-2 rounded w-full"
+  [(ngModel)]="username"
+/>
+
+<p class="text-gray-700 text-sm mt-2">
+  email: {{email()}}
+</p>
+
+<!-- event binding -->
+<button
+  (click)="sayHay()"
+  class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+>
+  Click me
+</button>
+
+<!-- disabled button by parameter -->
+
+<button
+  [disabled]="isDisabled"
+  (click)="sayHay()"
+  class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+>click
+</button>
