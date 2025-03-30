@@ -1,17 +1,21 @@
-<div id="grid" class="grid grid-cols-[1fr_3fr] grid-rows-[1fr_3fr_3fr_1fr] h-full">
-    <header class="row-start-1 col-span-2 border border-dashed border-[color:lightcoral]">
+<div class="grid grid-cols-1 md:grid-cols-[1fr_3fr] grid-rows-[auto_1fr_auto] h-screen gap-4 p-4">
+    <header class="md:col-span-2 border border-dashed border-rose-400 p-2">
       <app-header></app-header>
     </header>
-    <aside class="row-start-2 col-start-1 border border-dashed border-[color:lightcoral]">
+  
+    <aside class="hidden md:block border border-dashed border-rose-400 p-2">
       <app-following></app-following>
     </aside>
-    <aside class="row-start-3 col-start-1 border border-dashed border-[color:lightcoral]">
+  
+    <main class="border border-dashed border-rose-400 overflow-auto p-2">
+      <router-outlet></router-outlet>
+    </main>
+  
+    <aside class="hidden md:block border border-dashed border-rose-400 p-2">
       <app-followers></app-followers>
     </aside>
-    <main class="row-start-2 row-span-2 col-start-2 overflow-auto border border-dashed border-[color:lightcoral]">
-      <app-profile></app-profile>
-    </main>
-    <footer class="row-start-4 col-span-2 border border-dashed border-[color:lightcoral]">
+  
+    <footer class="md:col-span-2 border border-dashed border-rose-400 p-2">
       <app-footer></app-footer>
     </footer>
   </div>

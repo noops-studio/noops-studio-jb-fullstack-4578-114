@@ -16,64 +16,223 @@
 
 # app/app.routes.ts
 import { Routes } from '@angular/router';
+import { ProfileComponent } from './components/posts/profile/profile.component';
+import { FeedComponent } from './components/posts/feed/feed.component';
+import { NotFoundComponent } from './components/layout/not-found/not-found.component';
 
-export const routes: Routes = [];
+export const routes: Routes = [
+    { path: 'profile', component: ProfileComponent },
+    { path: '', redirectTo: 'profile', pathMatch: 'full'},
+    { path: 'feed', component: FeedComponent },
+    { path: '**', component: NotFoundComponent }
+];
+
+# app/pipes/allcaps.pipe.ts
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({
+  name: 'allcaps'
+})
+export class AllcapsPipe implements PipeTransform {
+
+  transform(value: unknown, ...args: unknown[]): unknown {
+    return (value as string).toUpperCase();
+  }
+
+}
+
+# app/components/posts/demo/profile.component.css
+
+# app/components/posts/demo/profile.component.html
+<!-- one way binding -->
+<p>{{name}}</p>
+<p>current time: {{currentTime | date | allcaps}}</p>
+
+<!-- two way binding -->
+<input [(ngModel)]="address"/> 
+{{address}}
+
+<hr/>
+
+<input [(ngModel)]="strUsername"/> 
+<br/>
+{{strUsername}}
+<br/>
+{{strEmail}}
+
+<hr/> 
+
+<input [(ngModel)]="username"/> 
+<br/>
+{{username()}}
+<br/>
+{{email()}}
+
+<hr/> 
+<!-- event binding -->
+<button (click)="sayHi()">click me</button>
+
+<!-- property binding -->
+<button [disabled]="isButtonDisabled">click me</button> 
+
+
+# app/components/posts/demo/profile.component.ts
+import { DatePipe } from '@angular/common';
+import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { AllcapsPipe } from '../../../pipes/allcaps.pipe';
+import { FormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-profile',
+  imports: [DatePipe, AllcapsPipe, FormsModule],
+  templateUrl: './profile.component.html',
+  styleUrl: './profile.component.css'
+})
+export class ProfileComponent implements OnInit, OnDestroy {
+    
+    name: string = 'Bob'
+    currentTime = (new Date())
+    intervalId: any
+    address: string = 'Khoma imigidal 33'
+
+    strUsername = ''
+    strEmail = `${this.strUsername}@johnbryce.co.il`
+
+    username = signal<string>('')
+    email = computed(() => `${this.username()}@johnbryce.co.il`)
+
+    isButtonDisabled = true
+
+    sayHi() {
+        alert('hi')
+    }
+
+    // runs when the component initializes
+    ngOnInit(): void {
+        this.intervalId = setInterval(() => {
+            this.currentTime = (new Date())
+        }, 1000)
+    }
+
+    // runs when the component is destroyed
+    ngOnDestroy(): void {
+        clearInterval(this.intervalId)
+    }
+
+
+
+}
 
 # app/components/posts/profile/profile.component.css
 
 # app/components/posts/profile/profile.component.html
+<!-- one way binding -->
 <p>{{name}}</p>
-<p>current time: {{correntTime}}</p>
+<p>current time: {{currentTime | date | allcaps}}</p>
+
+<!-- two way binding -->
+<input [(ngModel)]="address"/> 
+{{address}}
+
+<hr/>
+
+<input [(ngModel)]="strUsername"/> 
+<br/>
+{{strUsername}}
+<br/>
+{{strEmail}}
+
+<hr/> 
+
+<input [(ngModel)]="username"/> 
+<br/>
+{{username()}}
+<br/>
+{{email()}}
+
+<hr/> 
+<!-- event binding -->
+<button (click)="sayHi()">click me</button>
+
+<!-- property binding -->
+<button [disabled]="isButtonDisabled">click me</button> 
+
+
 # app/components/posts/profile/profile.component.ts
-import { Component } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { AllcapsPipe } from '../../../pipes/allcaps.pipe';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-profile',
-  imports: [],
+  imports: [DatePipe, AllcapsPipe, FormsModule],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css'
 })
-export class ProfileComponent {
- name: string = 'John Doe';
- correntTime: string = new Date().toLocaleTimeString();
+export class ProfileComponent implements OnInit, OnDestroy {
+    
+    name: string = 'Bob'
+    currentTime = (new Date())
+    intervalId: any
+    address: string = 'Khoma imigidal 33'
+
+    strUsername = ''
+    strEmail = `${this.strUsername}@johnbryce.co.il`
+
+    username = signal<string>('')
+    email = computed(() => `${this.username()}@johnbryce.co.il`)
+
+    isButtonDisabled = true
+
+    sayHi() {
+        alert('hi')
+    }
+
+    // runs when the component initializes
+    ngOnInit(): void {
+        this.intervalId = setInterval(() => {
+            this.currentTime = (new Date())
+        }, 1000)
+    }
+
+    // runs when the component is destroyed
+    ngOnDestroy(): void {
+        clearInterval(this.intervalId)
+    }
+
+
+
 }
 
-# app/components/posts/profile/profile.component.spec.ts
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+# app/components/posts/feed/feed.component.css
 
-import { ProfileComponent } from './profile.component';
+# app/components/posts/feed/feed.component.html
+<p>feed works!</p>
 
-describe('ProfileComponent', () => {
-  let component: ProfileComponent;
-  let fixture: ComponentFixture<ProfileComponent>;
+# app/components/posts/feed/feed.component.ts
+import { Component } from '@angular/core';
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [ProfileComponent]
-    })
-    .compileComponents();
+@Component({
+  selector: 'app-feed',
+  imports: [],
+  templateUrl: './feed.component.html',
+  styleUrl: './feed.component.css'
+})
+export class FeedComponent {
 
-    fixture = TestBed.createComponent(ProfileComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-});
+}
 
 # app/components/app/app.component.html
 <app-layout></app-layout>
 
 # app/components/app/app.component.ts
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 import { LayoutComponent } from "../layout/layout/layout.component";
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, LayoutComponent],
+  imports: [LayoutComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -103,11 +262,34 @@ export class FooterComponent {
 # app/components/layout/footer/footer.component.html
 <p>footer works!</p>
 
+# app/components/layout/not-found/not-found.component.css
+p {
+    color: red;
+    font-weight: 900;
+    font-size: 24px;
+}
+# app/components/layout/not-found/not-found.component.html
+<p>Your page was not found</p>
+
+# app/components/layout/not-found/not-found.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-not-found',
+  imports: [],
+  templateUrl: './not-found.component.html',
+  styleUrl: './not-found.component.css'
+})
+export class NotFoundComponent {
+
+}
+
 # app/components/layout/layout/layout.component.css
 #grid {
     display: grid;
     grid-template-columns: 1fr 3fr;
     grid-template-rows: 1fr 3fr 3fr 1fr;
+    height: 100%;
 }
 
 #grid > * {
@@ -132,6 +314,7 @@ export class FooterComponent {
 #grid > main {
     grid-row: 2 / span 2;
     grid-column: 2;
+    overflow: auto;
 }
 
 #grid > footer {
@@ -141,34 +324,43 @@ export class FooterComponent {
 
 
 # app/components/layout/layout/layout.component.html
-<div id="grid">
-    <header>
-        <app-header></app-header>
+<div id="grid" class="grid grid-cols-[1fr_3fr] grid-rows-[1fr_3fr_3fr_1fr] h-full">
+    <header class="row-start-1 col-span-2 border border-dashed border-[color:lightcoral]">
+      <app-header></app-header>
     </header>
-    <aside>
-        <app-following></app-following>
+    <aside class="row-start-2 col-start-1 border border-dashed border-[color:lightcoral]">
+      <app-following></app-following>
     </aside>
-    <aside>
-        <app-followers></app-followers>
+    <aside class="row-start-3 col-start-1 border border-dashed border-[color:lightcoral]">
+      <app-followers></app-followers>
     </aside>
-    <main>
-        <app-profile></app-profile>
+    <main class="row-start-2 row-span-2 col-start-2 overflow-auto border border-dashed border-[color:lightcoral]">
+      <router-outlet></router-outlet>
     </main>
-    <footer>
-        <app-footer></app-footer>
+    <footer class="row-start-4 col-span-2 border border-dashed border-[color:lightcoral]">
+      <app-footer></app-footer>
     </footer>
-</div>
+  </div>
+  
 # app/components/layout/layout/layout.component.ts
 import { Component } from '@angular/core';
 import { HeaderComponent } from "../header/header.component";
 import { FooterComponent } from "../footer/footer.component";
 import { FollowingComponent } from "../../follows/following/following.component";
 import { FollowersComponent } from "../../follows/followers/followers.component";
-import { ProfileComponent } from '../../posts/profile/profile.component';
+import { RouterOutlet } from '@angular/router';
+import { ProfileComponent } from "../../posts/profile/profile.component";
 
 @Component({
   selector: 'app-layout',
-  imports: [HeaderComponent, FooterComponent, FollowingComponent, FollowersComponent,ProfileComponent],
+  imports: [
+    HeaderComponent,
+    FooterComponent,
+    FollowingComponent,
+    FollowersComponent,
+    RouterOutlet,
+    ProfileComponent
+],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.css'
 })
@@ -177,18 +369,48 @@ export class LayoutComponent {
 }
 
 # app/components/layout/header/header.component.html
-<p>header works!</p>
+<div id="header">
+    <div>
+        <h1>logo</h1>
+    </div>  
+    <div>
 
+        <a routerLink="/profile" routerLinkActive="active">profile</a>
+        <a routerLink="/feed" routerLinkActive="active">feed</a>
+    </div>
+    <div>
+        Hello Bob
+    </div>
+</div>
 # app/components/layout/header/header.component.css
 p {
     color: red;
 }
+
+.active {
+    color: green;
+}
+
+#header {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+#header div:nth-child(2) {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    
+}
 # app/components/layout/header/header.component.ts
 import { Component } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
   selector: 'app-header',
-  imports: [],
+  imports: [RouterLink, RouterLinkActive],
   templateUrl: './header.component.html',
   styleUrl: './header.component.css'
 })
@@ -252,7 +474,9 @@ bootstrapApplication(AppComponent, appConfig)
 
 # styles.css
 /* You can add global styles to this file, and also import other style files */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
 @import "tailwindcss";
-@import "tailwindcss/typography";
-@import "tailwindcss/forms";
-

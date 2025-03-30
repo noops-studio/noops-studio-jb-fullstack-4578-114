@@ -1,1 +1,56 @@
-<p>header works!</p>
+<header class="bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg py-4 px-6">
+    <div class="flex items-center justify-between">
+      <!-- Logo -->
+      <div class="flex items-center">
+        <!-- Replace with your actual logo if available -->
+        <!-- <img src="assets/logo.svg" alt="Logo" class="h-8 w-8 mr-2" /> -->
+        <span class="text-white font-bold text-xl tracking-wide">02Social</span>
+      </div>
+  
+      <!-- Mobile menu button -->
+      <div class="lg:hidden">
+        <button id="mobile-menu-button" class="text-white focus:outline-none" aria-label="Toggle mobile menu">
+          <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+  
+      <!-- Desktop Navigation -->
+      <nav class="hidden lg:flex items-center space-x-6">
+        <a routerLink="/profile" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Profile
+        </a>
+        <a routerLink="/feed" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Feed
+        </a>
+        <div class="flex items-center gap-2">
+          <!-- Circular profile placeholder with first letter -->
+          <div class="h-8 w-8 rounded-full bg-white flex items-center justify-center">
+            <span class="text-blue-600 font-bold">B</span>
+          </div>
+          <span class="text-white">Hello, Bob</span>
+        </div>
+      </nav>
+    </div>
+  
+    <!-- Mobile Navigation Menu (initially hidden; toggle with Angular logic) -->
+    <div id="mobile-menu" class="mt-4 hidden lg:hidden">
+      <nav class="flex flex-col space-y-2">
+        <a routerLink="/profile" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Profile
+        </a>
+        <a routerLink="/feed" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Feed
+        </a>
+        <div class="flex items-center gap-2">
+          <!-- Circular profile placeholder with first letter -->
+          <div class="h-8 w-8 rounded-full bg-white flex items-center justify-center">
+            <span class="text-blue-600 font-bold">B</span>
+          </div>
+          <span class="text-white">Hello, Bob</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+  
