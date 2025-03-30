@@ -1,27 +1,19 @@
-import { 
-    AllowNull, 
-    Column, 
-    DataType, 
-    Default, 
-    ForeignKey, 
-    Model, 
-    PrimaryKey, 
-    Table 
-} from "sequelize-typescript";
-import User from "./user";
+import mongoose, { Schema, Document } from "mongoose";
 
-@Table({
-    underscored: true
-})
-export default class Follow extends Model{
-
-    @PrimaryKey
-    @ForeignKey(() => User)
-    @Column(DataType.UUID)
-    followerId: string
-
-    @PrimaryKey
-    @ForeignKey(() => User)
-    @Column(DataType.UUID)
-    followeeId: string
+export interface IFollow extends Document {
+  follower: mongoose.Types.ObjectId;
+  followee: mongoose.Types.ObjectId;
 }
+
+const FollowSchema: Schema = new Schema(
+  {
+    follower: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    followee: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: true }
+);
+
+// Prevent duplicate follow records
+FollowSchema.index({ follower: 1, followee: 1 }, { unique: true });
+
+export default mongoose.model<IFollow>("Follow", FollowSchema);

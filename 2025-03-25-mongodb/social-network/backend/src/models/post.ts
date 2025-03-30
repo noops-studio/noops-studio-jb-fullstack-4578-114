@@ -1,49 +1,20 @@
-import { 
-    AllowNull, 
-    BelongsTo, 
-    Column, 
-    DataType, 
-    Default, 
-    ForeignKey, 
-    HasMany, 
-    Model, 
-    PrimaryKey, 
-    Table 
-} from "sequelize-typescript";
-import User from "./user";
-import Comment from "./comment";
+import mongoose, { Schema, Document } from "mongoose";
 
-@Table({
-    underscored: true
-})
-export default class Post extends Model{
-
-    @PrimaryKey
-    @Default(DataType.UUIDV4)
-    @Column(DataType.UUID)
-    id: string
-    
-    @ForeignKey(() => User)
-    @AllowNull(false)
-    @Column(DataType.UUID)
-    userId: string
-    
-    @AllowNull(false)
-    @Column(DataType.STRING(40))
-    title: string
-    
-    @AllowNull(false)
-    @Column(DataType.TEXT)
-    body: string
-
-    @AllowNull(true)
-    @Column(DataType.STRING(255))
-    imageUrl: string
-
-    @BelongsTo(() => User)
-    user: User
-
-    @HasMany(() => Comment)
-    comments: Comment[]
-
+export interface IPost extends Document {
+  user: mongoose.Types.ObjectId;
+  title: string;
+  body: string;
+  imageUrl?: string;
 }
+
+const PostSchema: Schema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    title: { type: String, required: true, minlength: 10, maxlength: 40 },
+    body: { type: String, required: true, minlength: 20 },
+    imageUrl: { type: String },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model<IPost>("Post", PostSchema);

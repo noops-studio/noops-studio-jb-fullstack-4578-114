@@ -1,55 +1,18 @@
-import { 
-    AllowNull, 
-    BelongsToMany, 
-    Column, 
-    DataType, 
-    Default, 
-    HasMany, 
-    Index, 
-    Model, 
-    PrimaryKey, 
-    Table 
-} from "sequelize-typescript";
-import Post from "./post";
-import Comment from "./comment";
-import Follow from "./follow";
+import mongoose, { Schema, Document } from "mongoose";
 
-@Table({
-    underscored: true,
-})
-export default class User extends Model{
-
-    @PrimaryKey
-    @Default(DataType.UUIDV4)
-    @Column(DataType.UUID)
-    id: string
-    
-    @AllowNull(false)
-    @Column(DataType.STRING(40))
-    name: string
-    
-    @Index({ unique: true })
-    @AllowNull(false)
-    @Column(DataType.STRING(40))
-    username: string
-    
-    @AllowNull(false)
-    @Column(DataType.STRING(64))
-    password: string
-
-    @HasMany(() => Post, {
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE'
-    })
-    posts: Post[]
-
-    @HasMany(() => Comment)
-    comments: Comment[]
-
-    @BelongsToMany(() => User, () => Follow, 'followeeId', 'followerId')
-    followers: User[]
-
-    @BelongsToMany(() => User, () => Follow, 'followerId', 'followeeId')
-    following: User[]
-
+export interface IUser extends Document {
+  name: string;
+  username: string;
+  password: string;
 }
+
+const UserSchema: Schema = new Schema(
+  {
+    name: { type: String, required: true, minlength: 2, maxlength: 40 },
+    username: { type: String, required: true, unique: true, minlength: 6, maxlength: 40 },
+    password: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model<IUser>("User", UserSchema);

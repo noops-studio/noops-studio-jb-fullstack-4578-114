@@ -1,46 +1,29 @@
 import { NextFunction, Request, Response } from "express";
-import User from "../../models/user";
 import Post from "../../models/post";
-import postIncludes from "../common/post-includes";
-import sequelize from "../../db/sequelize";
+import Follow from "../../models/follow";
 
-export async function getFeed(req: Request, res: Response, next: NextFunction) {
-    try {
-        const userId = req.userId
+export async function getFeed(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = req.userId;
+    
+    // Find all follow records where the current user is the follower.
+    const follows = await Follow.find({ follower: userId });
+    
+    // Extract followee IDs (users that current user is following).
+    const followeeIds = follows.map((follow) => follow.followee);
 
-        const user = await User.findByPk(userId, {
-            include: [ { 
-                model: User,
-                as: 'following',
-                include: [ { 
-                    model: Post,
-                    ...postIncludes
-                } ]
-            } ]
-        })
+    // Find posts made by the users the current user is following.
+    const posts = await Post.find({ user: { $in: followeeIds } })
+      .populate("user") // Populate the post's user field.
+      .populate({ path: "comments", populate: "user" }) // Populate comments and each comment's user.
+      .sort({ createdAt: -1 }); // Sort posts by most recent first.
 
-        const feed = user.following.reduce((cumulative: Post[], { posts }) => {
-            return [...cumulative, ...posts]
-        }, []).sort((a: Post, b: Post) => a.createdAt < b.createdAt ? 1 : -1)
-
-        res.json(feed)        
-
-        // example how to do the same with RAW QUERY using sequelize:
-        // const feed = await sequelize.query(`
-        //     select	posts.*
-        //     from 	posts
-        //     JOIN	follows on posts.user_id = follows.followee_id
-        //     AND		follows.follower_id = ?
-        //     ORDER BY created_at DESC
-        // `, {
-        //     replacements: [ userId ],
-        //     model: Post
-        // })        
-
-        // await Promise.all(feed.map(post => post.reload({...postIncludes})))
-
-        // res.json(feed)
-    } catch (e) {
-        next(e)
-    }
+    res.json(posts);
+  } catch (error) {
+    next(error);
+  }
 }

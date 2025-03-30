@@ -1,30 +1,37 @@
 import { NextFunction, Request, Response } from "express";
 import Comment from "../../models/comment";
-import User from "../../models/user";
-import { io } from "socket.io-client";
 import socket from "../../io/io";
 import SocketMessages from "socket-enums-snoops";
 
-export async function createComment(req: Request<{postId: string}>, res: Response, next: NextFunction) {
-    try {
-        const userId = req.userId
+export async function createComment(
+  req: Request<{ postId: string }>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = req.userId;
+    const { postId } = req.params;
 
-        const { postId } = req.params 
+    // Create a new comment document.
+    const comment = new Comment({
+      user: userId,
+      post: postId,
+      ...req.body,
+    });
 
-        const comment = await Comment.create({
-            userId,
-            postId,
-            ...req.body
-        })
-        await comment.reload({
-            include: [ User ]
-        })
-        res.json(comment)
-        socket.emit(SocketMessages.NEW_COMMENT, {
-            from: req.headers['x-client-id'], // req.header(), req.get()
-            data: comment
-        })
-    } catch (e) {
-        next(e)
-    }
+    await comment.save();
+
+    // Populate the user field (if you want to send user info with the comment)
+    await comment.populate("user");
+
+    res.json(comment);
+
+    // Emit a socket event (if needed)
+    socket.emit(SocketMessages.NEW_COMMENT, {
+      from: req.headers["x-client-id"],
+      data: comment,
+    });
+  } catch (error) {
+    next(error);
+  }
 }

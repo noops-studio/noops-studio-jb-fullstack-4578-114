@@ -1,45 +1,18 @@
-import { 
-    AllowNull, 
-    BelongsTo, 
-    Column, 
-    DataType, 
-    Default, 
-    ForeignKey, 
-    Model, 
-    PrimaryKey, 
-    Table 
-} from "sequelize-typescript";
-import Post from "./post";
-import User from "./user";
+import mongoose, { Schema, Document } from "mongoose";
 
-@Table({
-    underscored: true,
-})
-export default class Comment extends Model{
-
-    @PrimaryKey
-    @Default(DataType.UUIDV4)
-    @Column(DataType.UUID)
-    id: string
-    
-    @ForeignKey(() => Post)
-    @AllowNull(false)
-    @Column(DataType.UUID)
-    postId: string
-
-    @ForeignKey(() => User)
-    @AllowNull(false)
-    @Column(DataType.UUID)
-    userId: string
-
-    @AllowNull(false)
-    @Column(DataType.TEXT)
-    body: string
-
-    @BelongsTo(() => Post)
-    post: Post
-
-    @BelongsTo(() => User)
-    user: User
-
+export interface IComment extends Document {
+  post: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
+  body: string;
 }
+
+const CommentSchema: Schema = new Schema(
+  {
+    post: { type: Schema.Types.ObjectId, ref: "Post", required: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    body: { type: String, required: true, minlength: 20 },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model<IComment>("Comment", CommentSchema);

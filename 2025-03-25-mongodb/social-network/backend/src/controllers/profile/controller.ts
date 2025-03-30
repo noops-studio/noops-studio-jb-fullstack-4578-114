@@ -1,102 +1,120 @@
 import { NextFunction, Request, Response } from "express";
-import User from "../../models/user";
-import Post from "../../models/post";
-import Comment from "../../models/comment";
-import postIncludes from "../common/post-includes";
 import AppError from "../../errors/app-error";
 import { StatusCodes } from "http-status-codes";
+import Post from "../../models/post";
 import socket from "../../io/io";
 import SocketMessages from "socket-enums-snoops";
 
-export async function getProfile(req: Request, res: Response, next: NextFunction) {
-    try {
-        const userId = req.userId
-
-        const user = await User.findByPk(userId, {
-            include: [ {
-                model: Post,
-                ...postIncludes
-            } ],
-            order: [['createdAt', 'asc']]
-        })
-        // console.log(user.get({ plain: true }))
-        res.json(user.posts)
-
-    } catch (e) {
-        next(e)
-    }
+// Get all posts by the authenticated user
+export async function getProfile(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = req.userId;
+    const posts = await Post.find({ user: userId })
+      .populate("user")
+      .populate({ path: "comments", populate: "user" })
+      .sort({ createdAt: 1 });
+    res.json(posts);
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function getPost(req: Request<{id: string}>, res: Response, next: NextFunction) {
-    try {
-        const post = await Post.findByPk(req.params.id, postIncludes)
-        res.json(post)
-    } catch (e) {
-        next(e)
+// Get a single post by its ID (with populated user and comments)
+export async function getPost(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate("user")
+      .populate({ path: "comments", populate: "user" });
+    if (!post) {
+      return next(new AppError(StatusCodes.NOT_FOUND, "Post not found"));
     }
+    res.json(post);
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function deletePost(req: Request<{id: string}>, res: Response, next: NextFunction) {
-        try {
-        // this is how you delete an EXISTING object:
-        // const post = await Post.findByPk(req.params.id)
-        // await post.destroy() 
-
-        // this is how you delete, using a static function,
-        // when you don't already have a sequelize object:
-        const id = req.params.id
-        const deletedRows = await Post.destroy({
-            where: { id }
-        })
-
-        if(deletedRows === 0) return next(new AppError(StatusCodes.NOT_FOUND, 'the post you were trying to delete does not exist'))
-
-        res.json({
-            success: true
-        })
-
-    } catch (e) {
-        next(e)
+// Delete a post by its ID
+export async function deletePost(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const post = await Post.findByIdAndDelete(req.params.id);
+    if (!post) {
+      return next(
+        new AppError(StatusCodes.NOT_FOUND, "The post does not exist")
+      );
     }
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function createPost(req: Request, res: Response, next: NextFunction) {
-    try {
-        const userId = req.userId
+// Create a new post
+export async function createPost(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = req.userId;
+    let createParams: any = { ...req.body, user: userId };
 
-        let createParams = { ...req.body, userId }
-
-        if(req.imageUrl) {
-            const { imageUrl } = req
-            createParams = { ...createParams, imageUrl }
-        }
-
-        const post = await Post.create(createParams)
-        await post.reload(postIncludes)
-        res.json(post)
-        socket.emit(SocketMessages.NEW_POST, {
-            from: req.headers['x-client-id'], // req.header(), req.get()
-            data: post
-        })
-    } catch (e) {
-        next(e)
+    if (req.imageUrl) {
+      createParams.imageUrl = req.imageUrl;
     }
+
+    const post = new Post(createParams);
+    await post.save();
+
+    // Populate user and comments (if any) for the response.
+    await post.populate("user");
+    await post.populate({ path: "comments", populate: "user" });
+
+    res.json(post);
+
+    socket.emit(SocketMessages.NEW_POST, {
+      from: req.headers["x-client-id"],
+      data: post,
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function updatePost(req: Request<{id: string}>, res: Response, next: NextFunction) {
-    try {
-        const post = await Post.findByPk(req.params.id, postIncludes)
-
-        // an example to findAll
-        // const pos2 = await Post.findAll({where: {name: 'Gustav'}})
-
-        const { title, body } = req.body
-        post.title = title
-        post.body = body
-        await post.save() // <= this command generates the actual SQL UPDATE
-        res.json(post)
-
-    } catch (e) {
-        next(e)
+// Update an existing post
+export async function updatePost(
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { title, body } = req.body;
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return next(new AppError(StatusCodes.NOT_FOUND, "Post not found"));
     }
+    post.title = title;
+    post.body = body;
+    await post.save();
+
+    // Re-populate for updated response.
+    await post.populate("user");
+    await post.populate({ path: "comments", populate: "user" });
+
+    res.json(post);
+  } catch (error) {
+    next(error);
+  }
 }
