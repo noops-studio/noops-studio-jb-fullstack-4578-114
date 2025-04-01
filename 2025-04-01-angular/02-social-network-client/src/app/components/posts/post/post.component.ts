@@ -1,10 +1,11 @@
 import { Component, input, output } from '@angular/core';
 import { Post } from '../../../models/post/post.model';
 import { ProfileService } from '../../../services/profile.service';
+import { CommentsComponent } from "../comments/comments.component";
 
 @Component({
   selector: 'app-post',
-  imports: [],
+  imports: [CommentsComponent],
   templateUrl: './post.component.html',
   styleUrl: './post.component.css'
 })
