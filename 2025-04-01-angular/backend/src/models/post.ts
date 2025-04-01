@@ -25,6 +25,14 @@ const CommentSchema = new mongoose.Schema<PostComment>({
         ref: 'User'
     },
     createdAt: Date
+}, {
+    toObject: {
+        transform: function(doc, ret) {
+            ret.id = ret._id
+            delete ret._id
+            delete ret.__v
+        }
+    }
 })
 
 const PostSchema = new mongoose.Schema<Post>({

@@ -3,12 +3,11 @@
     <p>by {{post()?.user?.name}} at {{post()?.createdAt}}</p>
     <div>{{post()?.body}}</div>
     <button (click)="deleteMe()">delete</button>
-
     <app-comments
-        [postId]="post()?.id"
         [comments]="post()?.comments"
-        (commentAdded)="addComment($event)"
-        (commentDeleted)="deleteComment($event)"
-        (commentUpdated)="updateComment($event)"
+        [postId]="post()?.id"
+        (deletedComment)="deleteComment($event)"
+    >
 
+    </app-comments>
 </div>

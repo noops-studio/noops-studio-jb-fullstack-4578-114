@@ -4,19 +4,20 @@ import socket from "../../io/io";
 import SocketMessages from "socket-enums-shaharsol";
 import { PostModel } from "../../models/post";
 
-
 export async function deleteComment(req: Request<{postId: string, commentId: string}>, res: Response, next: NextFunction) {
     try {
-        const { postId, commentId } = req.params
-     
+        const { postId, commentId } = req.params 
+
         const post = await PostModel.findByIdAndUpdate(postId, {
-                $pull: {
-                    comments: { _id: commentId }
-                }
-            }, {
-                new: true
-            })
-        
+            $pull: {
+                comments: { _id: commentId }
+            }
+        }, {
+            new: true
+        })
+
+        res.json(post.toObject())
+
     } catch (e) {
         next(e)
     }

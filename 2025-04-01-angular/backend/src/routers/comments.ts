@@ -11,5 +11,4 @@ router.use(enforceAuth)
 
 router.post('/:postId', validation(newCommentValidator), paramsValidation(newCommentParamsValidator), createComment)
 router.delete('/:postId/:commentId', paramsValidation(deleteCommentParamsValidator), deleteComment)
-
 export default router

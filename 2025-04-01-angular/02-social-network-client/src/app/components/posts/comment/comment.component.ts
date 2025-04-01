@@ -1,5 +1,6 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { PostComment } from '../../../models/comment/comment.model';
+import { ProfileService } from '../../../services/profile.service';
 
 @Component({
   selector: 'app-comment',
@@ -9,6 +10,21 @@ import { PostComment } from '../../../models/comment/comment.model';
 })
 export class CommentComponent {
 
-  comment = input<PostComment>()
+    constructor (
+        public profileService: ProfileService
+    ) {}
 
+    postId = input<string>()
+    comment = input<PostComment>()
+
+    deletedComment = output<string>()
+
+    async deleteMe() {
+        try {
+            await this.profileService.deleteComment(this.postId()!, this.comment()!.id)
+            this.deletedComment.emit(this.comment()!.id)
+        } catch (e) {
+            alert(e)
+        }
+    }
 }
