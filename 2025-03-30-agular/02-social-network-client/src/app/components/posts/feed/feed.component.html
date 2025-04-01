@@ -1,1 +1,19 @@
-<p class="text-center text-blue-500 text-lg p-4">Feed works!</p>
+<div class="feed p-4">
+  <ng-template [ngIf]="loading">
+    <div class="text-center py-4 text-gray-600">Loading feed...</div>
+  </ng-template>
+  <ng-template [ngIf]="error">
+    <div class="error text-red-500 text-center py-2">Error: {{ error }}</div>
+  </ng-template>
+  <ng-template [ngIf]="!loading && posts.length > 0">
+    <ng-template ngFor let-post [ngForOf]="posts">
+      <div class="feed-post bg-white p-4 shadow rounded mb-4">
+        <h3 class="text-xl font-bold">{{ post.title }}</h3>
+        <div [innerHTML]="post.body" class="text-gray-700"></div>
+      </div>
+    </ng-template>
+  </ng-template>
+  <ng-template [ngIf]="!loading && posts.length === 0">
+    <div class="text-center text-gray-600">No posts to show.</div>
+  </ng-template>
+</div>

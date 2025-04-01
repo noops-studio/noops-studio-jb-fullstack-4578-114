@@ -1,45 +1,60 @@
-import { DatePipe } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
-import { AllcapsPipe } from '../../../pipes/allcaps.pipe';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ProfileService } from '../../../../services/profile.service';
+import Post from '../../../../models/post.model';
+import { PostComponent } from '../post/post.component';
 
 @Component({
   selector: 'app-profile',
-  imports: [DatePipe, AllcapsPipe, FormsModule],
+  standalone: true,
+  imports: [CommonModule, PostComponent],
   templateUrl: './profile.component.html',
-  styleUrl: './profile.component.css'
+  styleUrls: ['./profile.component.css']
 })
-export class ProfileComponent implements OnInit, OnDestroy {
-    
-    name: string = 'Bob'
-    currentTime = (new Date())
-    intervalId: any
-    address: string = 'Khoma imigidal 33'
+export class ProfileComponent implements OnInit {
+  posts: Post[] = [];
+  loading = true;
+  error: string | null = null;
 
-    strUsername = ''
-    strEmail = `${this.strUsername}@johnbryce.co.il`
+  constructor(private profileService: ProfileService) {}
 
-    username = signal<string>('')
-    email = computed(() => `${this.username()}@johnbryce.co.il`)
+  ngOnInit(): void {
+    this.loadPosts();
+  }
 
-    isButtonDisabled = true
+  loadPosts() {
+    this.profileService.fetchPosts().subscribe({
+      next: posts => {
+        this.posts = posts.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        this.loading = false;
+      },
+      error: err => {
+        this.error = err.message || 'Error fetching posts';
+        this.loading = false;
+      },
+    });
+  }
 
-    sayHi() {
-        alert('hi')
-    }
+  handleDelete(postId: string) {
+    this.profileService.deletePost(postId).subscribe({
+      next: () => {
+        this.posts = this.posts.filter(post => post.id !== postId);
+      },
+      error: err => console.error('Delete failed:', err),
+    });
+  }
 
-    // runs when the component initializes
-    ngOnInit(): void {
-        this.intervalId = setInterval(() => {
-            this.currentTime = (new Date())
-        }, 1000)
-    }
-
-    // runs when the component is destroyed
-    ngOnDestroy(): void {
-        clearInterval(this.intervalId)
-    }
-
-
-
+  handleUpdate(post: Post, updateData: { title: string; body: string }) {
+    this.profileService.updatePost(post.id, updateData).subscribe({
+      next: updatedPost => {
+        const index = this.posts.findIndex(p => p.id === post.id);
+        if (index !== -1) {
+          this.posts[index] = updatedPost;
+        }
+      },
+      error: err => console.error('Update failed:', err),
+    });
+  }
 }

@@ -1,0 +1,28 @@
+<div class="auth-container max-w-md mx-auto p-6 bg-white shadow rounded">
+  <h2 class="text-2xl font-bold mb-4">{{ isSignup ? 'Sign Up' : 'Login' }}</h2>
+  <form [formGroup]="authForm" (ngSubmit)="onSubmit()">
+    <ng-template [ngIf]="isSignup">
+      <div class="mb-3">
+        <label class="block font-semibold mb-1">Name:</label>
+        <input formControlName="name" type="text" class="w-full p-2 border rounded">
+      </div>
+    </ng-template>
+    <div class="mb-3">
+      <label class="block font-semibold mb-1">Username:</label>
+      <input formControlName="username" type="text" class="w-full p-2 border rounded">
+    </div>
+    <div class="mb-3">
+      <label class="block font-semibold mb-1">Password:</label>
+      <input formControlName="password" type="password" class="w-full p-2 border rounded">
+    </div>
+    <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition">
+      {{ isSignup ? 'Sign Up' : 'Login' }}
+    </button>
+  </form>
+  <button (click)="toggleMode()" class="mt-4 text-blue-500 underline">
+    Switch to {{ isSignup ? 'Login' : 'Sign Up' }}
+  </button>
+  <ng-template [ngIf]="error">
+    <div class="error text-red-500 mt-3">{{ error }}</div>
+  </ng-template>
+</div>

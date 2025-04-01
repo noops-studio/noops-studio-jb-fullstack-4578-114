@@ -17,4 +17,14 @@ const PostSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+PostSchema.virtual("comments", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "post",
+});
+
+// Required to include virtuals in JSON outputs
+PostSchema.set("toObject", { virtuals: true });
+PostSchema.set("toJSON", { virtuals: true });
+
 export default mongoose.model<IPost>("Post", PostSchema);

@@ -1471,7 +1471,6 @@ interface EditPostUiProps {
 export default function EditPostUi({
   title,
   body,
-  postId,
   onSave,
 }: EditPostUiProps) {
   const [postTitle, setPostTitle] = useState(title);
@@ -1557,7 +1556,9 @@ export default function EditPostUi({
                     <button
                       type="button"
                       onClick={() =>
-                        setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+                        setSelectedFiles((prev) =>
+                          prev.filter((_, i) => i !== index)
+                        )
                       }
                       className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
                     >

@@ -1,0 +1,13 @@
+<div class="edit-post-modal">
+    <h2>Edit Post</h2>
+    <form [formGroup]="editForm" (ngSubmit)="onSave()">
+      <label>Title:</label>
+      <input formControlName="title" type="text">
+      <label>Body:</label>
+      <textarea formControlName="body"></textarea>
+      <label>Upload New Images (optional):</label>
+      <input type="file" multiple (change)="onFileChange($event)">
+      <button type="submit">Save Changes</button>
+      <button type="button" (click)="onCancel()">Cancel</button>
+    </form>
+  </div>

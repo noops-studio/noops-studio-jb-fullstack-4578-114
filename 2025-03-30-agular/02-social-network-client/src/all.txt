@@ -14,6 +14,42 @@
 </body>
 </html>
 
+# app/interceptors/auth.interceptor.spec.ts
+import { TestBed } from '@angular/core/testing';
+import { HttpInterceptorFn } from '@angular/common/http';
+
+import { authInterceptor } from './auth.interceptor';
+
+describe('authInterceptor', () => {
+  const interceptor: HttpInterceptorFn = (req, next) => 
+    TestBed.runInInjectionContext(() => authInterceptor(req, next));
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  it('should be created', () => {
+    expect(interceptor).toBeTruthy();
+  });
+});
+
+# app/interceptors/auth.interceptor.ts
+import { inject } from '@angular/core';
+import { HttpInterceptorFn } from '@angular/common/http';
+import { CookieService } from 'ngx-cookie-service';
+
+export const AuthInterceptor: HttpInterceptorFn = (req, next) => {
+  const cookieService = inject(CookieService);
+  const token = cookieService.get('auth_token'); // Change if your token name differs
+
+  const authReq = token
+    ? req.clone({
+        headers: req.headers.set('Authorization', `Bearer ${token}`)
+      })
+    : req;
+
+  return next(authReq);
+};
 # app/app.routes.ts
 import { Routes } from '@angular/router';
 import { ProfileComponent } from './components/posts/profile/profile.component';
@@ -41,188 +77,701 @@ export class AllcapsPipe implements PipeTransform {
 
 }
 
-# app/components/posts/demo/profile.component.css
+# app/components/posts/post/post.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-# app/components/posts/demo/profile.component.html
-<!-- one way binding -->
-<p>{{name}}</p>
-<p>current time: {{currentTime | date | allcaps}}</p>
+import { PostComponent } from './post.component';
 
-<!-- two way binding -->
-<input [(ngModel)]="address"/> 
-{{address}}
+describe('PostComponent', () => {
+  let component: PostComponent;
+  let fixture: ComponentFixture<PostComponent>;
 
-<hr/>
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [PostComponent]
+    })
+    .compileComponents();
 
-<input [(ngModel)]="strUsername"/> 
-<br/>
-{{strUsername}}
-<br/>
-{{strEmail}}
+    fixture = TestBed.createComponent(PostComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
 
-<hr/> 
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
 
-<input [(ngModel)]="username"/> 
-<br/>
-{{username()}}
-<br/>
-{{email()}}
+# app/components/posts/post/post.component.css
 
-<hr/> 
-<!-- event binding -->
-<button (click)="sayHi()">click me</button>
+# app/components/posts/post/post.component.ts
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+import Post from '../../../../models/post.model';
+import { CommonModule } from '@angular/common';
+import { TinyEditorComponent } from '../../common/tiny-editor/tiny-editor.component';
+import { ImageCarouselComponent } from '../../common/image-carousel/image-carousel.component';
 
-<!-- property binding -->
-<button [disabled]="isButtonDisabled">click me</button> 
-
-
-# app/components/posts/demo/profile.component.ts
-import { DatePipe } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
-import { AllcapsPipe } from '../../../pipes/allcaps.pipe';
-import { FormsModule } from '@angular/forms';
+const MIN_COMMENT_LENGTH = 20;
 
 @Component({
-  selector: 'app-profile',
-  imports: [DatePipe, AllcapsPipe, FormsModule],
-  templateUrl: './profile.component.html',
-  styleUrl: './profile.component.css'
+  selector: 'app-post',
+  standalone: true,
+  imports: [CommonModule, TinyEditorComponent, ImageCarouselComponent],
+  templateUrl: './post.component.html',
+  styleUrls: ['./post.component.css']
 })
-export class ProfileComponent implements OnInit, OnDestroy {
-    
-    name: string = 'Bob'
-    currentTime = (new Date())
-    intervalId: any
-    address: string = 'Khoma imigidal 33'
+export class PostComponent {
+  @Input() post!: Post;
+  @Input() profilePictureUrl: string = 'assets/default-profile.png';
 
-    strUsername = ''
-    strEmail = `${this.strUsername}@johnbryce.co.il`
+  // Emit events for deletion and update so the parent can handle them
+  @Output() delete = new EventEmitter<string>();
+  @Output() update = new EventEmitter<{ title: string; body: string }>();
 
-    username = signal<string>('')
-    email = computed(() => `${this.username()}@johnbryce.co.il`)
+  // Local UI state
+  isEditing: boolean = false;
+  isDeleteDialogOpen: boolean = false;
+  showComments: boolean = false;
 
-    isButtonDisabled = true
+  newTitle: string = '';
+  newBody: string = '';
 
-    sayHi() {
-        alert('hi')
+  newComment: string = '';
+  commentError: string | null = null;
+
+  isAddingComment: boolean = false;
+  isUpdating: boolean = false;
+
+  // Toggle editing mode and initialize the form values
+  toggleEditing(): void {
+    this.isEditing = !this.isEditing;
+    if (this.isEditing) {
+      this.newTitle = this.post.title;
+      this.newBody = this.post.body;
     }
+  }
 
-    // runs when the component initializes
-    ngOnInit(): void {
-        this.intervalId = setInterval(() => {
-            this.currentTime = (new Date())
-        }, 1000)
+  // Toggle the comments modal
+  toggleShowComments(): void {
+    this.showComments = !this.showComments;
+  }
+
+  openDeleteDialog(): void {
+    this.isDeleteDialogOpen = true;
+  }
+
+  closeDeleteDialog(): void {
+    this.isDeleteDialogOpen = false;
+  }
+
+  // Handle updating the post by emitting an update event
+  async handleUpdate(): Promise<void> {
+    this.isUpdating = true;
+    try {
+      this.update.emit({ title: this.newTitle, body: this.newBody });
+      this.isEditing = false;
+    } catch (error) {
+      console.error('Failed to update post:', error);
+    } finally {
+      this.isUpdating = false;
     }
+  }
 
-    // runs when the component is destroyed
-    ngOnDestroy(): void {
-        clearInterval(this.intervalId)
+  // Handle deletion by emitting a delete event and closing the dialog
+  async handleDelete(): Promise<void> {
+    this.delete.emit(this.post.id);
+    this.isDeleteDialogOpen = false;
+  }
+
+  // Validate that the comment (with HTML stripped) meets a minimum length
+  validateComment(comment: string): boolean {
+    const tmp = document.createElement('DIV');
+    tmp.innerHTML = comment;
+    const stripped = tmp.textContent || tmp.innerText || '';
+    return stripped.length >= MIN_COMMENT_LENGTH;
+  }
+
+  // Handle adding a comment (replace this with your actual comment service call)
+  async handleAddComment(): Promise<void> {
+    if (!this.validateComment(this.newComment)) {
+      this.commentError = `Comment must be at least ${MIN_COMMENT_LENGTH} characters long`;
+      return;
     }
+    this.commentError = null;
+    this.isAddingComment = true;
+    try {
+      // For demonstration, push a dummy comment.
+      if (!this.post.comments) {
+        this.post.comments = [];
+      }
+      this.post.comments.push({
+        id: Date.now().toString(),
+        userId: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        body: this.newComment,
+        user: { id: '', name: 'Current User', username: '', createdAt: '', updatedAt: '' }
+      });
+      this.newComment = '';
+    } catch (error) {
+      this.commentError = 'Failed to add comment. Please try again.';
+    } finally {
+      this.isAddingComment = false;
+    }
+  }
 
+  // Format the creation date into a “time ago” format
+  formatTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
+    if (days > 7) {
+      return date.toLocaleDateString();
+    } else if (days > 0) {
+      return `${days}d ago`;
+    } else if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
+    }
+  }
 
+  // Parse the image URL(s) from the post. If post.imageUrl is a JSON array, parse it;
+  // otherwise, treat it as a single URL.
+  getImages(): string[] {
+    let images: string[] = [];
+    if (this.post.imageUrl) {
+      try {
+        images = JSON.parse(this.post.imageUrl);
+        if (!Array.isArray(images)) {
+          images = [this.post.imageUrl];
+        }
+      } catch (e) {
+        images = [this.post.imageUrl];
+      }
+    }
+    return images;
+  }
 }
+
+# app/components/posts/post/post.component.html
+<div class="border rounded-lg shadow-lg bg-white p-6 mb-6">
+  <!-- Header Section -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center">
+      <img [src]="profilePictureUrl" alt="Profile" class="w-10 h-10 rounded-full mr-4" />
+      <div>
+        <ng-template [ngIf]="post.user?.name" [ngIfThen]="userNameTpl" [ngIfElse]="anonymousTpl"></ng-template>
+        <ng-template #userNameTpl>
+          <h2 class="text-lg font-semibold">{{ post.user?.name }}</h2>
+        </ng-template>
+        <ng-template #anonymousTpl>
+          <h2 class="text-lg font-semibold">Anonymous</h2>
+        </ng-template>
+        <p class="text-sm text-gray-500">{{ formatTimeAgo(post.createdAt) }}</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <!-- Toggle Comments Modal -->
+      <button (click)="toggleShowComments()" class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white" title="Comments">
+        💬 {{ post.comments?.length || 0 }}
+      </button>
+      <!-- Toggle Edit Mode -->
+      <button (click)="toggleEditing()" class="p-2 rounded-full"
+        [ngClass]="isEditing ? 'bg-gray-400 hover:bg-gray-500' : 'bg-green-500 hover:bg-green-600'"
+        [attr.title]="isEditing ? 'Cancel Edit' : 'Edit'">
+        <ng-template [ngIf]="isEditing" [ngIfThen]="cancelEditTpl" [ngIfElse]="editTpl"></ng-template>
+        <ng-template #cancelEditTpl>✕</ng-template>
+        <ng-template #editTpl>✏️</ng-template>
+      </button>
+      <!-- Open Delete Dialog -->
+      <button (click)="openDeleteDialog()" class="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white" title="Delete">
+        🗑️
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Section -->
+  <ng-template [ngIf]="!isEditing">
+    <div class="mt-4">
+      <h3 class="text-xl font-bold mb-2">{{ post.title }}</h3>
+      <ng-template [ngIf]="post.imageUrl">
+        <div class="mb-4">
+          <app-image-carousel [images]="getImages()"></app-image-carousel>
+        </div>
+      </ng-template>
+      <div class="prose max-w-none text-gray-800" [innerHTML]="post.body"></div>
+    </div>
+  </ng-template>
+  <ng-template [ngIf]="isEditing">
+    <div class="mt-4">
+      <input type="text" [(ngModel)]="newTitle" class="w-full p-2 border rounded-md mb-4" placeholder="Enter title" minlength="10" />
+      <app-tiny-editor [value]="newBody" (valueChange)="newBody = $event" placeholder="Enter content..."></app-tiny-editor>
+      <div class="mt-4 flex justify-end space-x-4">
+        <button (click)="toggleEditing()"
+          class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md"
+          [disabled]="isUpdating">
+          Cancel
+        </button>
+        <button (click)="handleUpdate()"
+          class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+          [disabled]="isUpdating">
+          <ng-template [ngIf]="isUpdating" [ngIfThen]="savingTpl" [ngIfElse]="saveChangesTpl"></ng-template>
+          <ng-template #savingTpl>Saving...</ng-template>
+          <ng-template #saveChangesTpl>Save Changes</ng-template>
+        </button>
+      </div>
+    </div>
+  </ng-template>
+
+  <!-- Comments Modal -->
+  <ng-template [ngIf]="showComments">
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div class="bg-white w-11/12 md:max-w-2xl p-6 rounded-lg shadow-lg overflow-y-auto max-h-screen">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold">Comments ({{ post.comments?.length || 0 }})</h3>
+          <button (click)="toggleShowComments()" class="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        <div class="space-y-4 mb-6">
+          <ng-template ngFor let-comment [ngForOf]="post.comments">
+            <div class="border-b pb-4">
+              <div class="flex items-center mb-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm mr-2">
+                  <ng-template [ngIf]="comment.user?.name" [ngIfThen]="commentInitialTpl" [ngIfElse]="defaultInitialTpl"></ng-template>
+                  <ng-template #commentInitialTpl>{{ comment.user.name.charAt(0) }}</ng-template>
+                  <ng-template #defaultInitialTpl>A</ng-template>
+                </div>
+                <div>
+                  <ng-template [ngIf]="comment.user?.name" [ngIfThen]="commentUserTpl" [ngIfElse]="anonymousUserTpl"></ng-template>
+                  <ng-template #commentUserTpl>
+                    <p class="font-semibold">{{ comment.user.name }}</p>
+                  </ng-template>
+                  <ng-template #anonymousUserTpl>
+                    <p class="font-semibold">Anonymous</p>
+                  </ng-template>
+                  <p class="text-xs text-gray-500">{{ formatTimeAgo(comment.createdAt) }}</p>
+                </div>
+              </div>
+              <div class="text-gray-700 pl-10" [innerHTML]="comment.body"></div>
+            </div>
+          </ng-template>
+          <ng-template [ngIf]="!(post.comments && post.comments.length)">
+            <p class="text-gray-500 text-center">No comments yet</p>
+          </ng-template>
+        </div>
+        <div class="border-t pt-4">
+          <div class="mb-4">
+            <app-tiny-editor [value]="newComment" (valueChange)="newComment = $event" placeholder="Add a comment..." [height]="150"></app-tiny-editor>
+            <p class="mt-1 text-sm text-gray-500">Minimum {{ MIN_COMMENT_LENGTH }} characters required</p>
+            <ng-template [ngIf]="commentError">
+              <p class="mt-1 text-sm text-red-500">{{ commentError }}</p>
+            </ng-template>
+          </div>
+          <div class="flex justify-end gap-4">
+            <button (click)="newComment=''; commentError=null; toggleShowComments()"
+              class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md">
+              Cancel
+            </button>
+            <button (click)="handleAddComment()"
+              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+              [disabled]="isAddingComment || !newComment.trim()">
+              <ng-template [ngIf]="isAddingComment" [ngIfThen]="addingTpl" [ngIfElse]="addCommentTpl"></ng-template>
+              <ng-template #addingTpl>Adding Comment...</ng-template>
+              <ng-template #addCommentTpl>Add Comment</ng-template>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <!-- Delete Confirmation Dialog -->
+  <ng-template [ngIf]="isDeleteDialogOpen">
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <h3 class="text-xl font-bold mb-4">Delete Post</h3>
+        <p class="text-gray-600 mb-6">
+          Are you sure you want to delete this post? This action cannot be undone.
+        </p>
+        <div class="flex justify-end gap-4">
+          <button (click)="closeDeleteDialog()"
+            class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md">
+            Cancel
+          </button>
+          <button (click)="handleDelete()"
+            class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md">
+            Delete Post
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+</div>
+
+# app/components/posts/posts.module.ts
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+
+
+@NgModule({
+  declarations: [],
+  imports: [
+    CommonModule
+  ]
+})
+export class PostsModule { }
 
 # app/components/posts/profile/profile.component.css
 
 # app/components/posts/profile/profile.component.html
-<!-- one way binding -->
-<p>{{name}}</p>
-<p>current time: {{currentTime | date | allcaps}}</p>
+<div class="profile p-4">
+  <!-- Loading State -->
+  <ng-container *ngIf="loading">
+    <div class="text-center py-4 text-gray-600">Loading...</div>
+  </ng-container>
 
-<!-- two way binding -->
-<input [(ngModel)]="address"/> 
-{{address}}
+  <!-- Error Message -->
+  <ng-container *ngIf="error">
+    <div class="error text-red-500 text-center py-2">Error: {{ error }}</div>
+  </ng-container>
 
-<hr/>
+  <!-- Posts List using PostComponent -->
+  <ng-container *ngIf="!loading && posts.length > 0">
+    <ng-container *ngFor="let post of posts">
+      <app-post 
+        [post]="post" 
+        (delete)="handleDelete($event)" 
+        (update)="handleUpdate(post, $event)">
+      </app-post>
+    </ng-container>
+  </ng-container>
 
-<input [(ngModel)]="strUsername"/> 
-<br/>
-{{strUsername}}
-<br/>
-{{strEmail}}
-
-<hr/> 
-
-<input [(ngModel)]="username"/> 
-<br/>
-{{username()}}
-<br/>
-{{email()}}
-
-<hr/> 
-<!-- event binding -->
-<button (click)="sayHi()">click me</button>
-
-<!-- property binding -->
-<button [disabled]="isButtonDisabled">click me</button> 
-
+  <!-- No Posts Message -->
+  <ng-container *ngIf="!loading && posts.length === 0">
+    <div class="text-center text-gray-600">No posts found. Create your first post!</div>
+  </ng-container>
+</div>
 
 # app/components/posts/profile/profile.component.ts
-import { DatePipe } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
-import { AllcapsPipe } from '../../../pipes/allcaps.pipe';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { ProfileService } from '../../../../services/profile.service';
+import Post from '../../../../models/post.model';
+import { PostComponent } from '../post/post.component';
 
 @Component({
   selector: 'app-profile',
-  imports: [DatePipe, AllcapsPipe, FormsModule],
+  standalone: true,
+  imports: [PostComponent],
   templateUrl: './profile.component.html',
-  styleUrl: './profile.component.css'
+  styleUrls: ['./profile.component.css'],
 })
-export class ProfileComponent implements OnInit, OnDestroy {
-    
-    name: string = 'Bob'
-    currentTime = (new Date())
-    intervalId: any
-    address: string = 'Khoma imigidal 33'
+export class ProfileComponent implements OnInit {
+  posts: Post[] = [];
+  loading = true;
+  error: string | null = null;
 
-    strUsername = ''
-    strEmail = `${this.strUsername}@johnbryce.co.il`
+  constructor(private profileService: ProfileService) {}
 
-    username = signal<string>('')
-    email = computed(() => `${this.username()}@johnbryce.co.il`)
+  ngOnInit(): void {
+    this.loadPosts();
+  }
 
-    isButtonDisabled = true
+  loadPosts() {
+    this.profileService.fetchPosts().subscribe({
+      next: posts => {
+        // Sort posts with the newest first
+        this.posts = posts.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        this.loading = false;
+      },
+      error: err => {
+        this.error = err.message || 'Error fetching posts';
+        this.loading = false;
+      },
+    });
+  }
 
-    sayHi() {
-        alert('hi')
-    }
+  // Called when a post emits a delete event.
+  handleDelete(postId: string) {
+    this.profileService.deletePost(postId).subscribe({
+      next: () => {
+        this.posts = this.posts.filter(post => post.id !== postId);
+      },
+      error: err => console.error('Delete failed:', err),
+    });
+  }
 
-    // runs when the component initializes
-    ngOnInit(): void {
-        this.intervalId = setInterval(() => {
-            this.currentTime = (new Date())
-        }, 1000)
-    }
-
-    // runs when the component is destroyed
-    ngOnDestroy(): void {
-        clearInterval(this.intervalId)
-    }
-
-
-
+  // Called when a post emits an update event.
+  handleUpdate(post: Post, updateData: { title: string; body: string }) {
+    this.profileService.updatePost(post.id, updateData).subscribe({
+      next: updatedPost => {
+        const index = this.posts.findIndex(p => p.id === post.id);
+        if (index !== -1) {
+          this.posts[index] = updatedPost;
+        }
+      },
+      error: err => console.error('Update failed:', err),
+    });
+  }
 }
 
 # app/components/posts/feed/feed.component.css
 
 # app/components/posts/feed/feed.component.html
-<p>feed works!</p>
+<div class="feed p-4">
+  <ng-template [ngIf]="loading">
+    <div class="text-center py-4 text-gray-600">Loading feed...</div>
+  </ng-template>
+  <ng-template [ngIf]="error">
+    <div class="error text-red-500 text-center py-2">Error: {{ error }}</div>
+  </ng-template>
+  <ng-template [ngIf]="!loading && posts.length > 0">
+    <ng-template ngFor let-post [ngForOf]="posts">
+      <div class="feed-post bg-white p-4 shadow rounded mb-4">
+        <h3 class="text-xl font-bold">{{ post.title }}</h3>
+        <div [innerHTML]="post.body" class="text-gray-700"></div>
+      </div>
+    </ng-template>
+  </ng-template>
+  <ng-template [ngIf]="!loading && posts.length === 0">
+    <div class="text-center text-gray-600">No posts to show.</div>
+  </ng-template>
+</div>
 
 # app/components/posts/feed/feed.component.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import Post from '../../../../models/post.model';
+import { FeedService } from '../../../../services/feed.service.spec';
 
 @Component({
   selector: 'app-feed',
-  imports: [],
   templateUrl: './feed.component.html',
-  styleUrl: './feed.component.css'
+  styleUrls: ['./feed.component.css']
 })
-export class FeedComponent {
+export class FeedComponent implements OnInit {
+  posts: Post[] = [];
+  loading = true;
+  error: string | null = null;
 
+  constructor(private feedService: FeedService) {}
+
+  ngOnInit(): void {
+    this.loadFeed();
+  }
+
+  loadFeed() {
+    this.feedService.getFeed().subscribe({
+      next: posts => {
+        this.posts = posts;
+        this.loading = false;
+      },
+      error: err => {
+        this.error = err.message || 'Error fetching feed';
+        this.loading = false;
+      }
+    });
+  }
 }
+# app/components/posts/new-post/new-post.component.css
 
+# app/components/posts/new-post/new-post.component.ts
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { ProfileService } from '../../../../services/profile.service';
+
+@Component({
+  selector: 'app-new-post',
+  templateUrl: './new-post.component.html',
+  styleUrls: ['./new-post.component.css']
+})
+export class NewPostComponent {
+  postForm: FormGroup;
+  selectedFiles: File[] = [];
+  error: string | null = null;
+  loading = false;
+
+  constructor(private fb: FormBuilder,
+              private profileService: ProfileService,
+              private router: Router) {
+    this.postForm = this.fb.group({
+      title: ['', [Validators.required, Validators.minLength(10)]],
+      body: ['', [Validators.required, Validators.minLength(20)]]
+    });
+  }
+
+  onFileChange(event: any) {
+    if (event.target.files) {
+      for (let file of event.target.files) {
+        this.selectedFiles.push(file);
+      }
+    }
+  }
+
+  submitPost() {
+    if (this.postForm.invalid) return;
+    this.loading = true;
+    const formData = new FormData();
+    formData.append('title', this.postForm.get('title')?.value);
+    formData.append('body', this.postForm.get('body')?.value);
+    this.selectedFiles.forEach(file => formData.append('postImages', file));
+    this.profileService.addPost(formData).subscribe({
+      next: post => {
+        this.loading = false;
+        this.postForm.reset();
+        this.selectedFiles = [];
+        this.router.navigate(['/profile']);
+      },
+      error: err => {
+        this.error = err.message;
+        this.loading = false;
+      }
+    });
+  }
+}
+# app/components/posts/new-post/new-post.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { NewPostComponent } from './new-post.component';
+
+describe('NewPostComponent', () => {
+  let component: NewPostComponent;
+  let fixture: ComponentFixture<NewPostComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [NewPostComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(NewPostComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/posts/new-post/new-post.component.html
+<div class="new-post max-w-xl mx-auto p-6 bg-white shadow rounded">
+  <h2 class="text-2xl font-bold mb-4">Create New Post</h2>
+  <form [formGroup]="postForm" (ngSubmit)="submitPost()">
+    <label class="block font-semibold mb-1">Title:</label>
+    <input formControlName="title" type="text" class="w-full p-2 border rounded mb-3">
+    <label class="block font-semibold mb-1">Body:</label>
+    <textarea formControlName="body" class="w-full p-2 border rounded mb-3"></textarea>
+    <label class="block font-semibold mb-1">Upload Images:</label>
+    <input type="file" multiple (change)="onFileChange($event)" class="mb-3">
+    <button type="submit" [disabled]="loading" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition">
+      Create Post
+    </button>
+  </form>
+  <ng-template [ngIf]="error">
+    <div class="error text-red-500 mt-3">{{ error }}</div>
+  </ng-template>
+</div>
+
+# app/components/posts/edit-post/edit-post.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { EditPostComponent } from './edit-post.component';
+
+describe('EditPostComponent', () => {
+  let component: EditPostComponent;
+  let fixture: ComponentFixture<EditPostComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [EditPostComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(EditPostComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/posts/edit-post/edit-post.component.ts
+import { Component, Input, Output, EventEmitter, OnChanges } from '@angular/core';
+import Post from '../../../models/post.model';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+
+@Component({
+  selector: 'app-edit-post',
+  templateUrl: './edit-post.component.html',
+  styleUrls: ['./edit-post.component.css']
+})
+export class EditPostComponent implements OnChanges {
+  @Input() post!: Post;
+  @Output() save = new EventEmitter<{ id: string, data: any }>();
+  @Output() cancel = new EventEmitter<void>();
+
+  editForm: FormGroup;
+  selectedFiles: File[] = [];
+
+  constructor(private fb: FormBuilder) {
+    this.editForm = this.fb.group({
+      title: ['', [Validators.required, Validators.minLength(10)]],
+      body: ['', [Validators.required, Validators.minLength(20)]]
+    });
+  }
+
+  ngOnChanges(): void {
+    if (this.post) {
+      this.editForm.patchValue({
+        title: this.post.title,
+        body: this.post.body
+      });
+    }
+  }
+
+  onFileChange(event: any) {
+    if (event.target.files) {
+      this.selectedFiles = Array.from(event.target.files);
+    }
+  }
+
+  onSave() {
+    if (this.editForm.invalid) return;
+    const data = this.editForm.value;
+    this.save.emit({ id: this.post.id, data });
+  }
+
+  onCancel() {
+    this.cancel.emit();
+  }
+}
+# app/components/posts/edit-post/edit-post.component.css
+
+# app/components/posts/edit-post/edit-post.component.html
+<div class="edit-post-modal">
+    <h2>Edit Post</h2>
+    <form [formGroup]="editForm" (ngSubmit)="onSave()">
+      <label>Title:</label>
+      <input formControlName="title" type="text">
+      <label>Body:</label>
+      <textarea formControlName="body"></textarea>
+      <label>Upload New Images (optional):</label>
+      <input type="file" multiple (change)="onFileChange($event)">
+      <button type="submit">Save Changes</button>
+      <button type="button" (click)="onCancel()">Cancel</button>
+    </form>
+  </div>
 # app/components/app/app.component.html
 <app-layout></app-layout>
 
@@ -241,6 +790,128 @@ export class AppComponent {
 }
 
 # app/components/app/app.component.css
+/* @import "tailwindcss"; */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+# app/components/auth/auth.component.css
+
+# app/components/auth/auth.component.ts
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AuthService, Signup } from '../../../services/auth.service';
+import Login from '../../../models/Login.model';
+
+@Component({
+  selector: 'app-auth',
+  templateUrl: './auth.component.html',
+  styleUrls: ['./auth.component.css']
+})
+export class AuthComponent {
+  authForm: FormGroup;
+  isSignup = false;
+  error: string | null = null;
+
+  constructor(private authService: AuthService,
+              private fb: FormBuilder,
+              private router: Router) {
+    this.authForm = this.fb.group({
+      name: [''],
+      username: ['', Validators.required],
+      password: ['', Validators.required]
+    });
+  }
+
+  toggleMode() {
+    this.isSignup = !this.isSignup;
+    if (!this.isSignup) {
+      this.authForm.get('name')?.clearValidators();
+    } else {
+      this.authForm.get('name')?.setValidators(Validators.required);
+    }
+    this.authForm.get('name')?.updateValueAndValidity();
+  }
+
+  onSubmit() {
+    if (this.authForm.invalid) return;
+    if (this.isSignup) {
+      const signupData: Signup = this.authForm.value;
+      this.authService.signup(signupData).subscribe({
+        next: (res) => {
+          localStorage.setItem('auth_token', res.jwt);
+          this.router.navigate(['/profile']);
+        },
+        error: err => this.error = err.message
+      });
+    } else {
+      const loginData: Login = this.authForm.value;
+      this.authService.login(loginData).subscribe({
+        next: (res) => {
+          localStorage.setItem('auth_token', res.jwt);
+          this.router.navigate(['/profile']);
+        },
+        error: err => this.error = err.message
+      });
+    }
+  }
+}
+# app/components/auth/auth.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { AuthComponent } from './auth.component';
+
+describe('AuthComponent', () => {
+  let component: AuthComponent;
+  let fixture: ComponentFixture<AuthComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [AuthComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(AuthComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/auth/auth.component.html
+<div class="auth-container max-w-md mx-auto p-6 bg-white shadow rounded">
+  <h2 class="text-2xl font-bold mb-4">{{ isSignup ? 'Sign Up' : 'Login' }}</h2>
+  <form [formGroup]="authForm" (ngSubmit)="onSubmit()">
+    <ng-template [ngIf]="isSignup">
+      <div class="mb-3">
+        <label class="block font-semibold mb-1">Name:</label>
+        <input formControlName="name" type="text" class="w-full p-2 border rounded">
+      </div>
+    </ng-template>
+    <div class="mb-3">
+      <label class="block font-semibold mb-1">Username:</label>
+      <input formControlName="username" type="text" class="w-full p-2 border rounded">
+    </div>
+    <div class="mb-3">
+      <label class="block font-semibold mb-1">Password:</label>
+      <input formControlName="password" type="password" class="w-full p-2 border rounded">
+    </div>
+    <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition">
+      {{ isSignup ? 'Sign Up' : 'Login' }}
+    </button>
+  </form>
+  <button (click)="toggleMode()" class="mt-4 text-blue-500 underline">
+    Switch to {{ isSignup ? 'Login' : 'Sign Up' }}
+  </button>
+  <ng-template [ngIf]="error">
+    <div class="error text-red-500 mt-3">{{ error }}</div>
+  </ng-template>
+</div>
 
 # app/components/layout/footer/footer.component.css
 p { 
@@ -260,7 +931,7 @@ export class FooterComponent {
 }
 
 # app/components/layout/footer/footer.component.html
-<p>footer works!</p>
+<p class="text-green-500 text-sm text-center p-4">Footer works!</p>
 
 # app/components/layout/not-found/not-found.component.css
 p {
@@ -269,7 +940,7 @@ p {
     font-size: 24px;
 }
 # app/components/layout/not-found/not-found.component.html
-<p>Your page was not found</p>
+<p class="text-red-600 text-xl font-bold text-center p-4">Your page was not found</p>
 
 # app/components/layout/not-found/not-found.component.ts
 import { Component } from '@angular/core';
@@ -324,20 +995,24 @@ export class NotFoundComponent {
 
 
 # app/components/layout/layout/layout.component.html
-<div id="grid" class="grid grid-cols-[1fr_3fr] grid-rows-[1fr_3fr_3fr_1fr] h-full">
-    <header class="row-start-1 col-span-2 border border-dashed border-[color:lightcoral]">
+<div class="grid grid-cols-1 md:grid-cols-[1fr_3fr] grid-rows-[auto_1fr_auto] h-screen gap-4 p-4">
+    <header class="md:col-span-2 border border-dashed border-rose-400 p-2">
       <app-header></app-header>
     </header>
-    <aside class="row-start-2 col-start-1 border border-dashed border-[color:lightcoral]">
+  
+    <aside class="hidden md:block border border-dashed border-rose-400 p-2">
       <app-following></app-following>
     </aside>
-    <aside class="row-start-3 col-start-1 border border-dashed border-[color:lightcoral]">
-      <app-followers></app-followers>
-    </aside>
-    <main class="row-start-2 row-span-2 col-start-2 overflow-auto border border-dashed border-[color:lightcoral]">
+  
+    <main class="border border-dashed border-rose-400 overflow-auto p-2">
       <router-outlet></router-outlet>
     </main>
-    <footer class="row-start-4 col-span-2 border border-dashed border-[color:lightcoral]">
+  
+    <aside class="hidden md:block border border-dashed border-rose-400 p-2">
+      <app-followers></app-followers>
+    </aside>
+  
+    <footer class="md:col-span-2 border border-dashed border-rose-400 p-2">
       <app-footer></app-footer>
     </footer>
   </div>
@@ -369,19 +1044,61 @@ export class LayoutComponent {
 }
 
 # app/components/layout/header/header.component.html
-<div id="header">
-    <div>
-        <h1>logo</h1>
-    </div>  
-    <div>
-
-        <a routerLink="/profile" routerLinkActive="active">profile</a>
-        <a routerLink="/feed" routerLinkActive="active">feed</a>
+<header class="bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg py-4 px-6">
+    <div class="flex items-center justify-between">
+      <!-- Logo -->
+      <div class="flex items-center">
+        <!-- <img src="assets/logo.svg" alt="Logo" class="h-8 w-8 mr-2" /> -->
+        <span class="text-white font-bold text-xl tracking-wide">02Social</span>
+      </div>
+  
+      <!-- Mobile menu button -->
+      <div class="lg:hidden">
+        <button id="mobile-menu-button" class="text-white focus:outline-none" aria-label="Toggle mobile menu">
+          <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+  
+      <!-- Desktop Navigation -->
+      <nav class="hidden lg:flex items-center space-x-6">
+        <a routerLink="/profile" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Profile
+        </a>
+        <a routerLink="/feed" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Feed
+        </a>
+        <div class="flex items-center gap-2">
+          <!-- Circular profile placeholder with first letter -->
+          <div class="h-8 w-8 rounded-full bg-white flex items-center justify-center">
+            <span class="text-blue-600 font-bold">B</span>
+          </div>
+          <span class="text-white">Hello, Bob</span>
+        </div>
+      </nav>
     </div>
-    <div>
-        Hello Bob
+  
+    <!-- Mobile Navigation Menu (initially hidden; toggle with Angular logic) -->
+    <div id="mobile-menu" class="mt-4 hidden lg:hidden">
+      <nav class="flex flex-col space-y-2">
+        <a routerLink="/profile" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Profile
+        </a>
+        <a routerLink="/feed" routerLinkActive="underline" class="text-white hover:text-gray-200 transition duration-200">
+          Feed
+        </a>
+        <div class="flex items-center gap-2">
+          <!-- Circular profile placeholder with first letter -->
+          <div class="h-8 w-8 rounded-full bg-white flex items-center justify-center">
+            <span class="text-blue-600 font-bold">B</span>
+          </div>
+          <span class="text-white">Hello, Bob</span>
+        </div>
+      </nav>
     </div>
-</div>
+  </header>
+  
 # app/components/layout/header/header.component.css
 p {
     color: red;
@@ -418,39 +1135,264 @@ export class HeaderComponent {
 
 }
 
+# app/components/common/loading/loading.component.css
+
+# app/components/common/loading/loading.component.html
+<p>loading works!</p>
+
+# app/components/common/loading/loading.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { LoadingComponent } from './loading.component';
+
+describe('LoadingComponent', () => {
+  let component: LoadingComponent;
+  let fixture: ComponentFixture<LoadingComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [LoadingComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(LoadingComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/common/loading/loading.component.ts
+import { Component, Input } from '@angular/core';
+
+@Component({
+  selector: 'app-loading',
+  template: `
+    <ng-template [ngIf]="loading">
+  <div class="text-center py-4">Loading...</div>
+</ng-template>
+
+  `,
+  styleUrls: ['./loading.component.css']
+})
+export class LoadingComponent {
+  @Input() isLoading = false;
+  @Input() error: string | null = null;
+  @Input() onRetry?: () => void;
+}
+# app/components/common/image-carousel/image-carousel.component.css
+
+# app/components/common/image-carousel/image-carousel.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { ImageCarouselComponent } from './image-carousel.component';
+
+describe('ImageCarouselComponent', () => {
+  let component: ImageCarouselComponent;
+  let fixture: ComponentFixture<ImageCarouselComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [ImageCarouselComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(ImageCarouselComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/common/image-carousel/image-carousel.component.html
+<p>image-carousel works!</p>
+
+# app/components/common/image-carousel/image-carousel.component.ts
+import { Component, Input } from '@angular/core';
+
+@Component({
+  selector: 'app-image-carousel',
+  template: `
+    <div class="carousel" *ngIf="images && images.length">
+      <img [src]="images[currentIndex]" alt="Image {{ currentIndex + 1 }}">
+      <button *ngIf="images.length > 1" (click)="prev()">Prev</button>
+      <button *ngIf="images.length > 1" (click)="next()">Next</button>
+    </div>
+  `,
+  styleUrls: ['./image-carousel.component.css']
+})
+export class ImageCarouselComponent {
+  @Input() images: string[] = [];
+  currentIndex = 0;
+
+  prev() {
+    this.currentIndex = (this.currentIndex - 1 + this.images.length) % this.images.length;
+  }
+
+  next() {
+    this.currentIndex = (this.currentIndex + 1) % this.images.length;
+  }
+}
+# app/components/common/tiny-editor/tiny-editor.component.ts
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+
+@Component({
+  selector: 'app-tiny-editor',
+  template: `
+    <!-- For simplicity, a textarea is used. Integrate TinyMCE or another rich editor as needed -->
+    <textarea [value]="value" (input)="onChange($event.target.value)" 
+              [placeholder]="placeholder" [style.height.px]="height"></textarea>
+  `,
+  styleUrls: ['./tiny-editor.component.css']
+})
+export class TinyEditorComponent {
+  @Input() value: string = '';
+  @Input() placeholder: string = 'Type your content here...';
+  @Input() height: number = 300;
+  @Output() valueChange = new EventEmitter<string>();
+
+  onChange(newValue: string) {
+    this.valueChange.emit(newValue);
+  }
+}
+# app/components/common/tiny-editor/tiny-editor.component.spec.ts
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { TinyEditorComponent } from './tiny-editor.component';
+
+describe('TinyEditorComponent', () => {
+  let component: TinyEditorComponent;
+  let fixture: ComponentFixture<TinyEditorComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [TinyEditorComponent]
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(TinyEditorComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});
+
+# app/components/common/tiny-editor/tiny-editor.component.css
+
+# app/components/common/tiny-editor/tiny-editor.component.html
+<p>tiny-editor works!</p>
+
 # app/components/follows/followers/followers.component.html
 <p>followers works!</p>
 
 # app/components/follows/followers/followers.component.css
 
 # app/components/follows/followers/followers.component.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { FollowersService } from '../../../../services/followers.service.spec';
+import User from '../../../../models/user.model';
+
 
 @Component({
   selector: 'app-followers',
-  imports: [],
-  templateUrl: './followers.component.html',
-  styleUrl: './followers.component.css'
+  template: `
+  <div class="followers">
+    <h3>Followers</h3>
+    <ul>
+      <li *ngFor="let user of followers">
+        {{ user.name }}
+        <button (click)="toggleFollow(user)">{{ user.isFollowing ? 'Unfollow' : 'Follow' }}</button>
+      </li>
+    </ul>
+  </div>
+  `,
+  styleUrls: ['./followers.component.css']
 })
-export class FollowersComponent {
+export class FollowersComponent implements OnInit {
+  followers: User[] = [];
 
+  constructor(private followersService: FollowersService) {}
+
+  ngOnInit(): void {
+    this.loadFollowers();
+  }
+
+  loadFollowers() {
+    this.followersService.getFollowers().subscribe({
+      next: users => this.followers = users,
+      error: err => console.error(err)
+    });
+  }
+
+  toggleFollow(user: User) {
+    if (user.isFollowing) {
+      this.followersService.unfollowUser(user.id).subscribe({
+        next: () => user.isFollowing = false,
+        error: err => console.error(err)
+      });
+    } else {
+      this.followersService.followUser(user.id).subscribe({
+        next: () => user.isFollowing = true,
+        error: err => console.error(err)
+      });
+    }
+  }
 }
-
 # app/components/follows/following/following.component.css
 
 # app/components/follows/following/following.component.ts
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { FollowersService } from '../../../../services/followers.service.spec';
+import User from '../../../../models/user.model';
+
 
 @Component({
   selector: 'app-following',
-  imports: [],
-  templateUrl: './following.component.html',
-  styleUrl: './following.component.css'
+  template: `
+  <div class="following">
+    <h3>Following</h3>
+    <ul>
+      <li *ngFor="let user of following">
+        {{ user.name }}
+        <button (click)="unfollow(user.id)">Unfollow</button>
+      </li>
+    </ul>
+  </div>
+  `,
+  styleUrls: ['./following.component.css']
 })
-export class FollowingComponent {
+export class FollowingComponent implements OnInit {
+  following: User[] = [];
 
+  constructor(private followersService: FollowersService) {}
+
+  ngOnInit(): void {
+    this.loadFollowing();
+  }
+
+  loadFollowing() {
+    this.followersService.getFollowing().subscribe({
+      next: users => this.following = users,
+      error: err => console.error(err)
+    });
+  }
+
+  unfollow(id: string) {
+    this.followersService.unfollowUser(id).subscribe({
+      next: () => this.following = this.following.filter(u => u.id !== id),
+      error: err => console.error(err)
+    });
+  }
 }
-
 # app/components/follows/following/following.component.html
 <p>following works!</p>
 
@@ -459,9 +1401,17 @@ import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { AuthInterceptor } from './interceptors/auth.interceptor';
+import { CookieService } from 'ngx-cookie-service';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideZoneChangeDetection({ eventCoalescing: true }), provideRouter(routes)]
+  providers: [
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes),
+    provideHttpClient(withInterceptors([AuthInterceptor])),
+    CookieService,
+  ],
 };
 
 # main.ts
@@ -479,4 +1429,301 @@ html, body {
     padding: 0;
     height: 100%;
 }
-@import "tailwindcss";
+
+# environments/environment.ts
+export const environment = {
+    restServerUrl: 'http://localhost:3000/api',
+};
+
+# environments/environment.development.ts
+export const environment = {
+    restServerUrl: 'http://localhost:3000/api',
+};
+
+# models/Login.model.ts
+export default interface Login {
+    username: string;
+    password: string;
+}
+# models/user.model.ts
+import Login from "./Login.model";
+
+export default interface User extends Login {
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+}
+# models/Signup.model.ts
+export default interface User {
+    id: string;
+    name: string;
+    username: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+# models/UserFollower.model.ts
+ export default interface userFollower {
+    id:string;
+    name:string
+    username:string;
+    password:string;
+    created_at:string;
+    updated_at:string;
+
+ }
+# models/comment.model.ts
+import User from './user.model';
+import CommentDraft from './comment-draft.model';
+
+export default interface Comment extends CommentDraft {
+  id: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  user: User;
+}
+# models/post-draft.model.ts
+export default interface PostDraft {
+    title: string;
+    body: string;
+}
+# models/post.model.ts
+import Comment from './comment.model';
+import PostDraft from './post-draft.model';
+import User from './user.model';
+
+export default interface Post extends PostDraft {
+  id: string;
+  userId: string;
+  imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  comments: Comment[];
+  user: User;
+}
+# models/comment-draft.model.ts
+export default interface CommentDraft {
+    postId: string;
+    body: string;
+}
+# services/comment.service.ts
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class CommentService {
+
+  constructor() { }
+}
+
+# services/auth.service.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+
+export interface Login {
+  username: string;
+  password: string;
+}
+
+export interface Signup {
+  name: string;
+  username: string;
+  password: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private baseUrl = environment.restServerUrl;
+
+  constructor(private http: HttpClient) {}
+
+  login(credentials: Login): Observable<{ jwt: string }> {
+    return this.http.post<{ jwt: string }>(`${this.baseUrl}/auth/login`, credentials);
+  }
+
+  signup(data: Signup): Observable<{ jwt: string }> {
+    return this.http.post<{ jwt: string }>(`${this.baseUrl}/auth/signup`, data);
+  }
+}
+# services/feed.service.spec.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../environments/environment.development';
+import Post from '../models/post.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class FeedService {
+  private baseUrl = environment.restServerUrl;
+
+  constructor(private http: HttpClient) {}
+
+  getFeed(): Observable<Post[]> {
+    return this.http.get<Post[]>(`${this.baseUrl}/feed`);
+  }
+}
+# services/profile.service.spec.ts
+import { TestBed } from '@angular/core/testing';
+
+import { ProfileService } from './profile.service';
+
+describe('ProfileService', () => {
+  let service: ProfileService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(ProfileService);
+  });
+
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
+});
+
+# services/auth.service.spec.ts
+import { TestBed } from '@angular/core/testing';
+
+import { AuthService } from './auth.service';
+
+describe('AuthService', () => {
+  let service: AuthService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(AuthService);
+  });
+
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
+});
+
+# services/followers.service.ts
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class FollowersService {
+
+  constructor() { }
+}
+
+# services/feed.service.ts
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class FeedService {
+
+  constructor() { }
+}
+
+# services/profile.service.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../environments/environment.development';
+import Post from '../models/post.model';
+import PostDraft from '../models/post-draft.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ProfileService {
+  private baseUrl = environment.restServerUrl;
+
+  constructor(private http: HttpClient) {}
+
+  fetchPosts(): Observable<Post[]> {
+    return this.http.get<Post[]>(`${this.baseUrl}/profile`);
+  }
+
+  addPost(postData: FormData): Observable<Post> {
+    return this.http.post<Post>(`${this.baseUrl}/profile`, postData);
+  }
+
+  updatePost(id: string, postData: PostDraft): Observable<Post> {
+    return this.http.patch<Post>(`${this.baseUrl}/profile/${id}`, postData);
+  }
+
+  deletePost(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/profile/${id}`);
+  }
+
+  addComment(postId: string, body: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/comments/${postId}`, { body });
+  }
+}
+# services/comment.service.spec.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../environments/environment.development';
+import Comment from '../models/comment.model';
+
+
+@Injectable({
+  providedIn: 'root'
+})
+export class CommentService {
+  private baseUrl = environment.restServerUrl;
+
+  constructor(private http: HttpClient) {}
+
+  addComment(postId: string, body: string): Observable<Comment> {
+    return this.http.post<Comment>(`${this.baseUrl}/comments/${postId}`, { body });
+  }
+
+  updateComment(commentId: string, body: string): Observable<Comment> {
+    return this.http.patch<Comment>(`${this.baseUrl}/comments/${commentId}`, { body });
+  }
+
+  deleteComment(commentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/comments/${commentId}`);
+  }
+
+  getComments(postId: string): Observable<Comment[]> {
+    return this.http.get<Comment[]>(`${this.baseUrl}/comments/${postId}`);
+  }
+}
+# services/followers.service.spec.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../environments/environment';
+import User from '../models/login/User.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class FollowersService {
+  private baseUrl = environment.restServerUrl;
+
+  constructor(private http: HttpClient) {}
+
+  getFollowers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.baseUrl}/follows/followers`);
+  }
+
+  getFollowing(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.baseUrl}/follows/following`);
+  }
+
+  followUser(id: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/follows/follow/${id}`, {});
+  }
+
+  unfollowUser(id: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/follows/unfollow/${id}`, {});
+  }
+}

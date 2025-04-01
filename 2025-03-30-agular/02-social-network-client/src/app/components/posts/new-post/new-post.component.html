@@ -1,0 +1,17 @@
+<div class="new-post max-w-xl mx-auto p-6 bg-white shadow rounded">
+  <h2 class="text-2xl font-bold mb-4">Create New Post</h2>
+  <form [formGroup]="postForm" (ngSubmit)="submitPost()">
+    <label class="block font-semibold mb-1">Title:</label>
+    <input formControlName="title" type="text" class="w-full p-2 border rounded mb-3">
+    <label class="block font-semibold mb-1">Body:</label>
+    <textarea formControlName="body" class="w-full p-2 border rounded mb-3"></textarea>
+    <label class="block font-semibold mb-1">Upload Images:</label>
+    <input type="file" multiple (change)="onFileChange($event)" class="mb-3">
+    <button type="submit" [disabled]="loading" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition">
+      Create Post
+    </button>
+  </form>
+  <ng-template [ngIf]="error">
+    <div class="error text-red-500 mt-3">{{ error }}</div>
+  </ng-template>
+</div>

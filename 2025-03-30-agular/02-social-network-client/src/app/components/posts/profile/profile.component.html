@@ -1,37 +1,27 @@
-<div class="p-4 space-y-6">
-    <!-- One way binding -->
-    <div>
-      <p class="text-lg font-semibold">{{ name }}</p>
-      <p class="text-sm text-gray-500">Current time: {{ currentTime | date | allcaps }}</p>
-    </div>
-  
-    <!-- Two way binding: Address -->
-    <div class="flex flex-col space-y-2">
-      <label class="text-sm font-medium">Address:</label>
-      <input [(ngModel)]="address" class="border border-gray-300 rounded p-2" />
-      <p class="text-sm text-gray-600">{{ address }}</p>
-    </div>
-  
-    <!-- strUsername and strEmail -->
-    <div class="flex flex-col space-y-2">
-      <label class="text-sm font-medium">Username:</label>
-      <input [(ngModel)]="strUsername" class="border border-gray-300 rounded p-2" />
-      <p>{{ strUsername }}</p>
-      <p>{{ strEmail }}</p>
-    </div>
-  
-    <!-- signal username -->
-    <div class="flex flex-col space-y-2">
-      <label class="text-sm font-medium">Reactive Username:</label>
-      <input [(ngModel)]="username" class="border border-gray-300 rounded p-2" />
-      <p>{{ username() }}</p>
-      <p>{{ email() }}</p>
-    </div>
-  
-    <!-- Buttons -->
-    <div class="flex gap-4 flex-wrap">
-      <button (click)="sayHi()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Click Me</button>
-      <button [disabled]="isButtonDisabled" class="px-4 py-2 bg-gray-400 text-white rounded cursor-not-allowed">Disabled</button>
-    </div>
-  </div>
-  
+<div class="profile p-4">
+  <!-- Loading State -->
+  <ng-container *ngIf="loading">
+    <div class="text-center py-4 text-gray-600">Loading...</div>
+  </ng-container>
+
+  <!-- Error Message -->
+  <ng-container *ngIf="error">
+    <div class="error text-red-500 text-center py-2">Error: {{ error }}</div>
+  </ng-container>
+
+  <!-- Posts List using PostComponent -->
+  <ng-container *ngIf="!loading && posts.length > 0">
+    <ng-container *ngFor="let post of posts">
+      <app-post 
+        [post]="post" 
+        (delete)="handleDelete($event)" 
+        (update)="handleUpdate(post, $event)">
+      </app-post>
+    </ng-container>
+  </ng-container>
+
+  <!-- No Posts Message -->
+  <ng-container *ngIf="!loading && posts.length === 0">
+    <div class="text-center text-gray-600">No posts found. Create your first post!</div>
+  </ng-container>
+</div>
